@@ -327,7 +327,8 @@ async def save(client: Client, message: Message):
             inner_text = match.group(2).strip("\n")
             
             raw_inner = match.group(2)
-            lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
+            # Use lstrip() for consistent leading whitespace removal across platforms
+            lead_strip = len(raw_inner) - len(raw_inner.lstrip())
             
             # Since we matched on surrogated_text, these indices match Telegram offsets perfectly
             abs_start = match.start(2) + lead_strip

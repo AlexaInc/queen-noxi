@@ -114,6 +114,8 @@ async def new_member(client: Client, message: Message):
              await message.reply_text("One of my creators joined!")
              continue
 
+        if should_welc:
+            buttons = sql.get_welc_buttons(chat.id)
             if cust_welcome:
                 if cust_welcome == sql.DEFAULT_WELCOME:
                     cust_welcome = random.choice(sql.DEFAULT_WELCOME_MESSAGES)
@@ -138,6 +140,8 @@ async def new_member(client: Client, message: Message):
                 res, flags = await format_message(cust_welcome, new_mem, chat)
             else:
                 res, flags = await format_message(random.choice(sql.DEFAULT_WELCOME_MESSAGES), new_mem, chat)
+                keyb = build_keyboard(buttons)
+                keyboard = InlineKeyboardMarkup(keyb)
 
             if welc_type in (Types.TEXT, Types.BUTTON_TEXT):
                 # Text replies don't support has_spoiler

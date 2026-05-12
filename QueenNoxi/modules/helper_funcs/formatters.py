@@ -22,8 +22,9 @@ async def format_message(text: str, user: User, chat: Chat) -> Tuple[str, Dict]:
     id = user.id
     chatname = html.escape(chat.title if chat and chat.type != enums.ChatType.PRIVATE else user.first_name)
     
-    rules_link = f"https://t.me/{BOT_USERNAME}?startgroup=true" if not (chat and chat.type != enums.ChatType.PRIVATE) else f"https://t.me/{BOT_USERNAME}?start=rules_{chat.id}"
-    rules = f'<a href="{rules_link}">Rules</a>'
+    from QueenNoxi.modules.sql import rules_sql as r_sql
+    rules_text = r_sql.get_rules(chat.id) if (chat and chat.type != enums.ChatType.PRIVATE) else ""
+    rules = rules_text or "No rules set."
 
     VALID_PLACEHOLDERS = [
         "first", "last", "fullname", "username", "mention", "id", "chatname", "rules"

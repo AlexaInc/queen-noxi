@@ -85,8 +85,8 @@ __help__ = """
  ‣ `/rules`*:* get the rules for this chat.
  ‣ `/rules here`*:* get the rules for this chat but send it in the chat.
 *Admins only:*
- ‣ `/setrules <your rules here>`*:* set the rules for this chat.
- ‣ `/clearrules`*:* clear the rules for this chat.
+  ‣ `/setrules <your rules here>`*:* set the rules for this chat.
+  ‣ `/clearrules` or `/remrules`: clear the rules for this chat.
 """
 
 __mod_name__ = "Rᴜʟᴇs"
@@ -99,6 +99,6 @@ async def get_rules_handler(client, message):
 async def set_rules_handler(client, message):
     await set_rules(client, message)
 
-@pbot.on_message(filters.command("clearrules") & filters.group)
+@pbot.on_message(filters.command(["clearrules", "remrules"]) & filters.group)
 async def clear_rules_handler(client, message):
     await clear_rules(client, message)

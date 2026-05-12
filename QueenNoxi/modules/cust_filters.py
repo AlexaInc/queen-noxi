@@ -51,8 +51,8 @@ async def add_filter(client: Client, message: Message):
             for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
                 raw_inner = match.group(2)
-                lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
-                inner_text = raw_inner.strip("\n")
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
+                inner_text = raw_inner.strip()
                 
                 abs_start = match.start(2) + lead_strip
                 abs_end   = match.end(2)
@@ -121,9 +121,11 @@ async def add_filter(client: Client, message: Message):
             saved_notes = []
             for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
-                inner_text = match.group(2).strip()
+                raw_inner = match.group(2)
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
+                inner_text = raw_inner.strip()
                 
-                start_idx = first_space + 1 + match.start(2)
+                start_idx = first_space + 1 + match.start(2) + lead_strip
                 end_idx = first_space + 1 + match.end(2)
                 
                 segment_entities = []

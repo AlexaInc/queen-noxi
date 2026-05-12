@@ -61,11 +61,16 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
 
         try:
             if query and note.msgtype in (Types.BUTTON_TEXT, Types.TEXT):
+                edit_flags = flags.copy()
+                # Remove keys not supported by edit_message_text
+                for key in ["disable_notification", "protect_content", "has_spoiler"]:
+                    edit_flags.pop(key, None)
+                
                 await query.edit_message_text(
                     text,
                     parse_mode=parse_mode,
                     reply_markup=keyboard,
-                    **flags
+                    **edit_flags
                 )
                 return
 
@@ -153,12 +158,12 @@ async def save(client: Client, message: Message):
             saved = []
             for i, match in enumerate(matches):
                 name = match.group(1).lower()
-                raw_inner = match.group(2)          # may start/end with \n
-                lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))  # chars stripped from left
-                inner_text = raw_inner.strip("\n")  # strip leading/trailing newlines only
+                raw_inner = match.group(2)
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
+                inner_text = raw_inner.strip()
                 
-                # Slicing entities - adjust for tag position AND stripped leading newlines
-                abs_start = match.start(2) + lead_strip  # first real char of content
+                # Slicing entities - adjust for tag position AND stripped leading whitespace
+                abs_start = match.start(2) + lead_strip
                 abs_end   = match.end(2)
                 segment_entities = []
                 for ent in content_entities:
@@ -225,8 +230,8 @@ async def save(client: Client, message: Message):
         for i, match in enumerate(matches):
             name = match.group(1).lower()
             raw_inner = match.group(2)
-            lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
-            inner_text = raw_inner.strip("\n")
+            lead_strip = len(raw_inner) - len(raw_inner.lstrip())
+            inner_text = raw_inner.strip()
             
             abs_start = first_space + 1 + match.start(2) + lead_strip
             abs_end   = first_space + 1 + match.end(2)

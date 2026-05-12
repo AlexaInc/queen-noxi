@@ -67,19 +67,46 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
         keyboard = InlineKeyboardMarkup(keyb) if keyb else None
 
         try:
-            if query and note.msgtype in (Types.BUTTON_TEXT, Types.TEXT):
-                edit_flags = flags.copy()
-                # Remove keys not supported by edit_message_text
-                for key in ["disable_notification", "protect_content", "has_spoiler"]:
-                    edit_flags.pop(key, None)
+            if query:
+                # App-like feel: If current message is media, just edit the caption/buttons 
+                # unless a different file_id is required.
+                is_current_media = bool(query.message.photo or query.message.video or query.message.document or query.message.animation or query.message.voice or query.message.audio)
                 
-                await query.edit_message_text(
-                    text,
-                    parse_mode=parse_mode,
-                    reply_markup=keyboard,
-                    **edit_flags
-                )
-                return
+                # Filter out flags that are not compatible with edit_message_text/caption
+                edit_flags = {k: v for k, v in flags.items() if k not in ["disable_notification", "protect_content", "has_spoiler"]}
+
+                if note.msgtype in (Types.BUTTON_TEXT, Types.TEXT):
+                    if is_current_media:
+                        # Keep the media, just update the caption!
+                        await query.edit_message_caption(
+                            text,
+                            parse_mode=parse_mode,
+                            reply_markup=keyboard,
+                            **edit_flags
+                        )
+                        return
+                    else:
+                        await query.edit_message_text(
+                            text,
+                            parse_mode=parse_mode,
+                            reply_markup=keyboard,
+                            **edit_flags
+                        )
+                        return
+                
+                elif note.msgtype in (Types.PHOTO, Types.VIDEO, Types.DOCUMENT, Types.AUDIO, Types.VOICE):
+                    if is_current_media:
+                        # Update caption of existing media (we assume same file_id for super-notes)
+                        await query.edit_message_caption(
+                            text,
+                            parse_mode=parse_mode,
+                            reply_markup=keyboard,
+                            **edit_flags
+                        )
+                        return
+                    else:
+                        # Fallback: resend if moving from text to media
+                        pass
 
             if note.msgtype in (Types.BUTTON_TEXT, Types.TEXT):
                 flags.pop("has_spoiler", None)

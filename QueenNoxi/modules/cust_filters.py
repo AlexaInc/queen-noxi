@@ -50,6 +50,26 @@ async def add_filter(client: Client, message: Message):
         if matches:
             from QueenNoxi.modules.helper_funcs.string_handling import content_to_html, button_markdown_parser
             import QueenNoxi.modules.sql.notes_sql as note_sql
+            
+            # Extract media info to apply to ALL pages
+            m_sticker = bool(replied.sticker)
+            m_document = bool(replied.document)
+            m_image = bool(replied.photo)
+            m_audio = bool(replied.audio)
+            m_voice = bool(replied.voice)
+            m_video = bool(replied.video)
+            
+            _media = (replied.sticker or replied.document or replied.photo or replied.audio or replied.voice or replied.video)
+            m_file = _media.file_id if _media else None
+            
+            replied_type = None
+            if m_sticker: replied_type = Types.STICKER
+            elif m_document: replied_type = Types.DOCUMENT
+            elif m_image: replied_type = Types.PHOTO
+            elif m_audio: replied_type = Types.AUDIO
+            elif m_voice: replied_type = Types.VOICE
+            elif m_video: replied_type = Types.VIDEO
+            
             saved_notes = []
             for i, match in enumerate(matches):
                 keyword = match.group(1).lower()

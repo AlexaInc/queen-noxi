@@ -94,7 +94,7 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
                         )
                         return
                 
-                elif note.msgtype in (Types.PHOTO, Types.VIDEO, Types.DOCUMENT, Types.AUDIO, Types.VOICE):
+                elif note.msgtype in (Types.PHOTO, Types.VIDEO, Types.DOCUMENT, Types.AUDIO, Types.VOICE, Types.ANIMATION):
                     if is_current_media:
                         # Update caption of existing media (we assume same file_id for super-notes)
                         await query.edit_message_caption(
@@ -216,6 +216,9 @@ async def save(client: Client, message: Message):
             elif replied.video:
                 replied_type = Types.VIDEO
                 replied_file = replied.video.file_id
+            elif replied.animation:
+                replied_type = Types.ANIMATION
+                replied_file = replied.animation.file_id
             
             saved = []
             for i, match in enumerate(matches):

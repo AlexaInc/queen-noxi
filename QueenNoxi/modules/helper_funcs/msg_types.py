@@ -13,6 +13,7 @@ class Types(IntEnum):
     VOICE = 6
     VIDEO = 7
     VIDEO_NOTE = 8
+    ANIMATION = 9
 
 async def get_note_type(msg: Message):
     data_type = None
@@ -65,6 +66,9 @@ async def get_note_type(msg: Message):
         elif reply.video_note:
             content = reply.video_note.file_id
             data_type = Types.VIDEO_NOTE
+        elif reply.animation:
+            content = reply.animation.file_id
+            data_type = Types.ANIMATION
 
     return note_name, text, data_type, content, buttons
 

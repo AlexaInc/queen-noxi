@@ -102,12 +102,7 @@ async def add_filter(client: Client, message: Message):
 
                 # Point primary trigger to first tag's content
                 if i == 0 and trigger:
-                    sql.add_filter(
-                        chat_id, trigger, t, 
-                        is_sticker=m_sticker, is_document=m_document, is_image=m_image,
-                        is_audio=m_audio, is_voice=m_voice, is_video=m_video,
-                        buttons=b
-                    )
+                    sql.new_add_filter(chat_id, trigger, t, current_type, m_file, b)
                     if trigger != keyword:
                         saved_notes.append(f"{trigger} (filter)")
             
@@ -123,18 +118,25 @@ async def add_filter(client: Client, message: Message):
         t, b = button_markdown_parser(content_text, entities=content_entities)
         
         # Handle media filters
+        m_type = Types.BUTTON_TEXT if b else Types.TEXT
+        m_file = None
+        
         if replied.sticker:
-            sql.add_filter(chat_id, trigger, t, is_sticker=True, buttons=b)
+            m_type, m_file = Types.STICKER, replied.sticker.file_id
         elif replied.document:
-            sql.add_filter(chat_id, trigger, t, is_document=True, buttons=b)
+            m_type, m_file = Types.DOCUMENT, replied.document.file_id
         elif replied.photo:
-            sql.add_filter(chat_id, trigger, t, is_image=True, buttons=b)
+            m_type, m_file = Types.PHOTO, replied.photo.file_id
         elif replied.audio:
-            sql.add_filter(chat_id, trigger, t, is_audio=True, buttons=b)
+            m_type, m_file = Types.AUDIO, replied.audio.file_id
         elif replied.voice:
-            sql.add_filter(chat_id, trigger, t, is_voice=True, buttons=b)
+            m_type, m_file = Types.VOICE, replied.voice.file_id
         elif replied.video:
-            sql.add_filter(chat_id, trigger, t, is_video=True, buttons=b)
+            m_type, m_file = Types.VIDEO, replied.video.file_id
+        elif replied.animation:
+            m_type, m_file = Types.ANIMATION, replied.animation.file_id
+            
+        sql.new_add_filter(chat_id, trigger, t, m_type, m_file, b)
         else:
             sql.add_filter(chat_id, trigger, t, buttons=b)
             

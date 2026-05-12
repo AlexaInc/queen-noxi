@@ -16,6 +16,7 @@ from QueenNoxi.modules.helper_funcs.chat_status import user_admin, connection_st
 from QueenNoxi.modules.helper_funcs.misc import build_keyboard, revert_buttons
 from QueenNoxi.modules.helper_funcs.msg_types import get_filter_type, Types
 from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser, split_quotes
+from QueenNoxi.modules.helper_funcs.formatters import format_message
 from QueenNoxi.modules.sql import cust_filters_sql as sql
 
 # Handler group for filters
@@ -44,11 +45,12 @@ async def add_filter(client: Client, message: Message):
             return
         keyword = extracted[0].lower()
 
-    text, file_type, file_id = await get_filter_type(message)
+    text, file_type, file_id, buttons = await get_filter_type(message)
     
-    # Extract buttons from text if any
-    _, buttons = button_markdown_parser(text) if text else (None, [])
-    
+    if not file_type:
+        await message.reply_text("You didn't specify what to reply with!")
+        return
+
     sql.new_add_filter(chat_id, keyword, text, file_type, file_id, buttons)
     await message.reply_text(f"Saved filter '{keyword}'!")
 
@@ -100,18 +102,23 @@ async def reply_filter(client: Client, message: Message):
             buttons = sql.get_buttons(chat_id, keyword)
             keyboard = InlineKeyboardMarkup(build_keyboard(buttons)) if buttons else None
             
+            res, flags = await format_message(filt.reply_text, message.from_user, message.chat)
+
             if filt.file_type in (Types.TEXT, Types.BUTTON_TEXT):
                 await message.reply_text(
-                    filt.reply_text,
+                    res,
                     reply_markup=keyboard,
-                    disable_web_page_preview=True
+                    reply_to_message_id=message.id,
+                    **flags
                 )
             else:
                 await client.send_cached_media(
                     chat_id,
                     filt.file_id,
-                    caption=filt.reply_text,
-                    reply_markup=keyboard
+                    caption=res,
+                    reply_markup=keyboard,
+                    reply_to_message_id=message.id,
+                    **flags
                 )
             break
 

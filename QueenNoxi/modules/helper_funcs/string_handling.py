@@ -1,6 +1,6 @@
 import re
 import time
-from typing import List
+from typing import List, Tuple
 import bleach
 import markdown2
 from pyrogram import enums
@@ -15,7 +15,7 @@ MATCH_MD = re.compile(
 )
 
 LINK_REGEX = re.compile(r"(?<!\\)\[.+?\]\((.*?)\)")
-BTN_URL_REGEX = re.compile(r"(\[([^\[]+?)\]\(buttonurl:(?:/{0,2})(.+?)(:same)?\))")
+BTN_URL_REGEX = re.compile(r"(\[([^\[]+?)\]\(buttonurl(?:#([^:]+))?://(/{0,2})(.+?)(:same)?\))")
 
 def _selective_escape(to_parse: str) -> str:
     offset = 0
@@ -55,7 +55,14 @@ def markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int 
     res += _selective_escape(txt[prev:])
     return res
 
-def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int = 0) -> (str, List):
+class Button:
+    def __init__(self, name, url, same_line=False, color=None):
+        self.name = name
+        self.url = url
+        self.same_line = same_line
+        self.color = color
+
+def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int = 0) -> Tuple[str, List[Button]]:
     markdown_note = markdown_parser(txt, entities, offset)
     prev = 0
     note_data = ""
@@ -68,7 +75,16 @@ def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, offse
             to_check -= 1
 
         if n_escapes % 2 == 0:
-            buttons.append((match.group(2), match.group(3), bool(match.group(4))))
+            # match.group(2) -> name
+            # match.group(3) -> color
+            # match.group(5) -> url/back/next/home
+            # match.group(6) -> :same
+            buttons.append(Button(
+                match.group(2),
+                match.group(5),
+                bool(match.group(6)),
+                match.group(3)
+            ))
             note_data += markdown_note[prev : match.start(1)]
             prev = match.end(1)
         else:

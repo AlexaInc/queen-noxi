@@ -40,6 +40,7 @@ from QueenNoxi.modules.helper_funcs.string_handling import (
     escape_invalid_curly_brackets,
     markdown_parser,
 )
+from QueenNoxi.modules.helper_funcs.formatters import format_message
 from QueenNoxi.modules.log_channel import loggable
 from QueenNoxi.modules.sql.global_bans_sql import is_user_gbanned
 
@@ -77,7 +78,7 @@ async def send(message: Message, text: str, keyboard: InlineKeyboardMarkup, back
         )
     except RPCError as excp:
         LOGGER.error(f"Error sending welcome: {excp}")
-        return await message.reply_text(backup_message)
+        return await message.reply_text(backup_message, reply_to_message_id=reply_to)
 
 @pbot.on_message(filters.new_chat_members & filters.group)
 @loggable
@@ -118,39 +119,29 @@ async def new_member(client: Client, message: Message):
             keyb = build_keyboard(buttons)
             keyboard = InlineKeyboardMarkup(keyb)
 
-            first_name = new_mem.first_name or "User"
-            last_name = new_mem.last_name or ""
-            fullname = f"{first_name} {last_name}".strip()
-            count = await chat.get_member_count()
-            mention = new_mem.mention
-            username = f"@{new_mem.username}" if new_mem.username else mention
-
             if cust_welcome:
                 if cust_welcome == sql.DEFAULT_WELCOME:
-                    cust_welcome = random.choice(sql.DEFAULT_WELCOME_MESSAGES).format(first=first_name)
-
-                res = cust_welcome.format(
-                    first=first_name,
-                    last=last_name or first_name,
-                    fullname=fullname,
-                    username=username,
-                    mention=mention,
-                    count=count,
-                    chatname=chat.title,
-                    id=new_mem.id
-                )
+                    cust_welcome = random.choice(sql.DEFAULT_WELCOME_MESSAGES)
+                
+                res, flags = await format_message(cust_welcome, new_mem, chat)
             else:
-                res = random.choice(sql.DEFAULT_WELCOME_MESSAGES).format(first=first_name)
+                res, flags = await format_message(random.choice(sql.DEFAULT_WELCOME_MESSAGES), new_mem, chat)
 
             if welc_type == Types.TEXT or welc_type == Types.BUTTON_TEXT:
-                sent = await send(message, res, keyboard, "Welcome!")
+                sent = await message.reply_text(
+                    res,
+                    reply_markup=keyboard,
+                    reply_to_message_id=message.id if not sql.clean_service(chat.id) else None,
+                    **flags
+                )
             else:
                 # Handle media welcomes
                 sent = await client.send_cached_media(
                     chat.id,
                     cust_content,
                     caption=res,
-                    reply_markup=keyboard
+                    reply_markup=keyboard,
+                    **flags
                 )
 
             # Clean previous welcome

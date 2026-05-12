@@ -101,19 +101,39 @@ async def send_to_list(client, send_to: list, message: str, parse_mode=None) -> 
 def build_keyboard(buttons):
     keyb = []
     for btn in buttons:
-        if btn.same_line and keyb:
-            keyb[-1].append(InlineKeyboardButton(btn.name, url=btn.url))
+        color_prefix = ""
+        if btn.color:
+            if btn.color == "success":
+                color_prefix = "🟢 "
+            elif btn.color == "danger":
+                color_prefix = "🔴 "
+            elif btn.color == "primary":
+                color_prefix = "🔵 "
+            elif btn.color == "warning":
+                color_prefix = "🟡 "
+        
+        btn_text = f"{color_prefix}{btn.name}"
+        
+        if btn.url.startswith("#"):
+            note_name = btn.url[1:]
+            button = InlineKeyboardButton(btn_text, callback_data=f"note_{note_name}")
+        elif btn.url in ("btn_next", "btn_back", "btn_home"):
+            button = InlineKeyboardButton(btn_text, callback_data=f"paginate_{btn.url}")
         else:
-            keyb.append([InlineKeyboardButton(btn.name, url=btn.url)])
+            button = InlineKeyboardButton(btn_text, url=btn.url)
+
+        if btn.same_line and keyb:
+            keyb[-1].append(button)
+        else:
+            keyb.append([button])
     return keyb
 
 def revert_buttons(buttons):
     res = ""
     for btn in buttons:
-        if btn.same_line:
-            res += "\n[{}](buttonurl://{}:same)".format(btn.name, btn.url)
-        else:
-            res += "\n[{}](buttonurl://{})".format(btn.name, btn.url)
+        color_part = f"#{btn.color}" if btn.color else ""
+        same_line = ":same" if btn.same_line else ""
+        res += f"\n[{btn.name}](buttonurl{color_part}://{btn.url}{same_line})"
     return res
 
 def is_module_loaded(name):

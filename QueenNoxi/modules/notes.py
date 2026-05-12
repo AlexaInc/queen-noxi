@@ -12,6 +12,7 @@ from pyrogram.errors import RPCError
 
 import QueenNoxi.modules.sql.notes_sql as sql
 from QueenNoxi import DRAGONS, pbot, BOT_ID, SUPPORT_CHAT
+from QueenNoxi import DRAGONS, pbot, BOT_ID, SUPPORT_CHAT, LOGGER
 from QueenNoxi.modules.disable import DisableAbleCommandHandler
 from QueenNoxi.modules.helper_funcs.chat_status import connection_status, user_admin
 from QueenNoxi.modules.helper_funcs.misc import build_keyboard, revert_buttons
@@ -20,6 +21,7 @@ from QueenNoxi.modules.helper_funcs.string_handling import (
     escape_invalid_curly_brackets,
     escape_markdown
 )
+from QueenNoxi.modules.helper_funcs.formatters import format_message
 
 # Do not async
 @connection_status
@@ -42,34 +44,8 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
                 sql.rm_note(chat_id, notename)
                 return
         
-        VALID_NOTE_FORMATTERS = [
-            "first",
-            "last",
-            "fullname",
-            "username",
-            "id",
-            "chatname",
-            "mention",
-        ]
-        valid_format = escape_invalid_curly_brackets(note.value, VALID_NOTE_FORMATTERS)
-        if valid_format:
-            text = valid_format.format(
-                first=escape_markdown(message.from_user.first_name),
-                last=escape_markdown(message.from_user.last_name or message.from_user.first_name),
-                fullname=escape_markdown(
-                    " ".join(
-                        [message.from_user.first_name, message.from_user.last_name]
-                        if message.from_user.last_name
-                        else [message.from_user.first_name]
-                    )
-                ),
-                username="@" + message.from_user.username if message.from_user.username else message.from_user.mention,
-                mention=message.from_user.mention,
-                chatname=escape_markdown(message.chat.title if message.chat.type != enums.ChatType.PRIVATE else message.from_user.first_name),
-                id=message.from_user.id,
-            )
-        else:
-            text = ""
+        res, flags = await format_message(note.value, message.from_user, message.chat)
+        text = res
 
         buttons = sql.get_buttons(chat_id, notename)
         keyb = []
@@ -90,21 +66,22 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
                     reply_to_message_id=reply_id,
                     parse_mode=parse_mode,
                     reply_markup=keyboard,
+                    **flags
                 )
             elif note.msgtype == Types.STICKER:
-                await client.send_sticker(chat_id, note.file, reply_to_message_id=reply_id, reply_markup=keyboard)
+                await client.send_sticker(chat_id, note.file, reply_to_message_id=reply_id, reply_markup=keyboard, **flags)
             elif note.msgtype == Types.DOCUMENT:
-                await client.send_document(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard)
+                await client.send_document(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **flags)
             elif note.msgtype == Types.PHOTO:
-                await client.send_photo(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard)
+                await client.send_photo(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **flags)
             elif note.msgtype == Types.AUDIO:
-                await client.send_audio(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard)
+                await client.send_audio(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **flags)
             elif note.msgtype == Types.VOICE:
-                await client.send_voice(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard)
+                await client.send_voice(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **flags)
             elif note.msgtype == Types.VIDEO:
-                await client.send_video(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard)
+                await client.send_video(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **flags)
             elif note.msgtype == Types.VIDEO_NOTE:
-                await client.send_video_note(chat_id, note.file, reply_to_message_id=reply_id, reply_markup=keyboard)
+                await client.send_video_note(chat_id, note.file, reply_to_message_id=reply_id, reply_markup=keyboard, **flags)
 
         except RPCError as e:
             await message.reply_text(f"This note could not be sent. Error: {e.MESSAGE}")
@@ -206,6 +183,23 @@ async def clearall_btn(client: Client, query):
             await query.message.edit_text("Clearing of all notes has been cancelled.")
         else:
             await query.answer("Only the owner of the chat can do this.", show_alert=True)
+
+@pbot.on_callback_query(filters.regex(r"^note_.*"))
+async def note_callback(client: Client, query):
+    notename = query.data.split("_", 1)[1]
+    await get(client, query.message, notename, show_none=False)
+    await query.answer()
+
+@pbot.on_callback_query(filters.regex(r"^paginate_.*"))
+async def paginate_callback(client: Client, query):
+    action = query.data.split("_", 1)[1]
+    # Simple pagination placeholder logic
+    if action == "btn_next":
+        await query.answer("Next Page (Sample logic)", show_alert=True)
+    elif action == "btn_back":
+        await query.answer("Back Page (Sample logic)", show_alert=True)
+    elif action == "btn_home":
+        await query.answer("Home Page (Sample logic)", show_alert=True)
 
 
 @DisableAbleCommandHandler(["notes", "saved"])

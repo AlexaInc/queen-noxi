@@ -8,7 +8,7 @@ pinned: false
 ---
 
 <h1 align="center">
-  <b>👸 QueenNoxi 👸</b>
+  <b>👸 Queen Noxi 👸</b>
 </h1>
 
 <p align="center">
@@ -29,31 +29,20 @@ pinned: false
 
 - 🛡️ **Advanced Protection**: Anti-Flood, Anti-Spam, and GBans.
 - 🎬 **Unique Animations**: Robust Tenor-only animation system with local caching (reliable even when API limits hit).
+- 🔨 **Animated Admin Commands**: Styled `/aban`, `/amute`, and `/aunmute` with premium visual effects.
 - 🧠 **AI Integration**: Built-in Chatbot and ChatGPT features.
-- 🎵 **Music Integration**: Manage your group's music with ease.
 - ⚙️ **Highly Customizable**: Easy to configure via environment variables.
 
 ## 🚀 Deployment
 
 ### Heroku / HuggingFace
-Click the button below to deploy your own instance:
-
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/AlexaInc/queen-noxi)
 
 ### Manual Setup
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/AlexaInc/queen-noxi.git
-   ```
-2. Install requirements:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Configure your `.env` following `SETUP_GUIDE.md`.
-4. Run the bot:
-   ```bash
-   python3 -m QueenNoxi
-   ```
+1. Clone: `git clone https://github.com/AlexaInc/queen-noxi.git`
+2. Install: `pip install -r requirements.txt`
+3. Configure `.env` from `SETUP_GUIDE.md`.
+4. Run: `python3 -m QueenNoxi`
 
 ## 📜 Credits
 - **Author**: [Alexainc](https://github.com/AlexaInc)

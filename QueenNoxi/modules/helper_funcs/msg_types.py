@@ -32,7 +32,6 @@ async def get_note_type(msg: Message):
         text, buttons = button_markdown_parser(
             args[2],
             entities=msg.entities or msg.caption_entities,
-            offset=offset,
         )
         data_type = Types.BUTTON_TEXT if buttons else Types.TEXT
 

@@ -58,8 +58,9 @@ async def add_filter(client: Client, message: Message):
             m_audio = bool(replied.audio)
             m_voice = bool(replied.voice)
             m_video = bool(replied.video)
+            m_gif = bool(replied.animation)
             
-            _media = (replied.sticker or replied.document or replied.photo or replied.audio or replied.voice or replied.video)
+            _media = (replied.sticker or replied.document or replied.photo or replied.audio or replied.voice or replied.video or replied.animation)
             m_file = _media.file_id if _media else None
             
             replied_type = None
@@ -69,6 +70,7 @@ async def add_filter(client: Client, message: Message):
             elif m_audio: replied_type = Types.AUDIO
             elif m_voice: replied_type = Types.VOICE
             elif m_video: replied_type = Types.VIDEO
+            elif m_gif: replied_type = Types.ANIMATION
             
             saved_notes = []
             for i, match in enumerate(matches):
@@ -137,9 +139,6 @@ async def add_filter(client: Client, message: Message):
             m_type, m_file = Types.ANIMATION, replied.animation.file_id
             
         sql.new_add_filter(chat_id, trigger, t, m_type, m_file, b)
-        else:
-            sql.add_filter(chat_id, trigger, t, buttons=b)
-            
         await message.reply_text(f"Yas! Added filter `{trigger}` from reply.")
         return
 

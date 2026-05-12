@@ -80,126 +80,58 @@ async def send(message: Message, text: str, keyboard: InlineKeyboardMarkup, back
         LOGGER.error(f"Error sending welcome: {excp}")
         return await message.reply_text(backup_message, reply_to_message_id=reply_to)
 
-@pbot.on_message(filters.new_chat_members & filters.group)
-@loggable
-async def new_member(client: Client, message: Message):
-    chat = message.chat
-    new_members = message.new_chat_members
+# Cache to prevent double welcomes (User ID -> Chat ID)
+JOIN_CACHE = {}
+
+async def greet_member(client: Client, chat, user, message: Message = None):
+    # Prevent double welcome within 10 seconds
+    cache_key = (chat.id, user.id)
+    if JOIN_CACHE.get(cache_key) and time.time() - JOIN_CACHE[cache_key] < 10:
+        return
+    JOIN_CACHE[cache_key] = time.time()
 
     should_welc, cust_welcome, cust_content, welc_type = sql.get_welc_pref(chat.id)
     welc_mutes = sql.welcome_mutes(chat.id)
 
-    for new_mem in new_members:
-        if new_mem.id == BOT_ID:
-            # Bot joined a new chat
-            try:
-                await client.send_message(
-                    EVENT_LOGS,
-                    f"#NEW_GROUP\n**Group Name:** {html.escape(chat.title)}\n**Chat ID:** `{chat.id}`"
-                )
-            except Exception as e:
-                LOGGER.warning(f"Could not send new group log to EVENT_LOGS: {e}")
-            await message.reply_text("Watashi ga kita!")
-            continue
-
-        if is_user_gbanned(new_mem.id):
-            await client.ban_chat_member(chat.id, new_mem.id)
-            continue
-
-        # Special welcomes for devs/sudos etc.
-        if new_mem.id in OWNER_IDS:
-             await message.reply_text("The King has arrived!")
-             continue
-        elif new_mem.id in DEV_USERS:
-             await message.reply_text("One of my creators joined!")
-             continue
-
-        if should_welc:
-            buttons = sql.get_welc_buttons(chat.id)
-            if cust_welcome:
-                if cust_welcome == sql.DEFAULT_WELCOME:
-                    cust_welcome = random.choice(sql.DEFAULT_WELCOME_MESSAGES)
-                
-                # Robust notename lookup for pagination
-                _page_notename = ""
-                if buttons and any(getattr(b, "url", "") in ("btn_next", "btn_back", "btn_home") for b in buttons):
-                    import QueenNoxi.modules.sql.notes_sql as _nsql
-                    _all_notes = _nsql.get_all_chat_notes(chat.id)
-                    import re as _re
-                    def _strip_html(data):
-                        return _re.sub(r"<.*?>", "", str(data)).strip()
-                    _content_raw = _strip_html(cust_welcome)
-                    for _n in _all_notes:
-                        if _strip_html(_n.value) == _content_raw:
-                            _page_notename = _n.name.lower()
-                            break
-                
-                keyb = build_keyboard(buttons, notename=_page_notename)
-                keyboard = InlineKeyboardMarkup(keyb)
-                
-                res, flags = await format_message(cust_welcome, new_mem, chat)
-            else:
-                res, flags = await format_message(random.choice(sql.DEFAULT_WELCOME_MESSAGES), new_mem, chat)
-                keyb = build_keyboard(buttons)
-                keyboard = InlineKeyboardMarkup(keyb)
-
-            if welc_type in (Types.TEXT, Types.BUTTON_TEXT):
-                # Text replies don't support has_spoiler
-                text_flags = {k: v for k, v in flags.items() if k != "has_spoiler"}
-                sent = await message.reply_text(
-                    res,
-                    reply_markup=keyboard,
-                    reply_to_message_id=message.id if not sql.clean_service(chat.id) else None,
-                    parse_mode=enums.ParseMode.HTML,
-                    **text_flags
-                )
-            else:
-                # Media DOES NOT support disable_web_page_preview
-                media_flags = {k: v for k, v in flags.items() if k != "disable_web_page_preview"}
-                
-                # Check photo/video for spoiler support
-                if welc_type not in (Types.PHOTO, Types.VIDEO):
-                    media_flags.pop("has_spoiler", None)
-
-                # Handle media welcomes
-                sent = await client.send_cached_media(
-                    chat.id,
-                    cust_content,
-                    caption=res,
-                    reply_markup=keyboard,
-                    parse_mode=enums.ParseMode.HTML,
-                    **media_flags
-                )
-
-            # Clean previous welcome
-            prev_welc = sql.get_clean_pref(chat.id)
-            if prev_welc:
-                try:
-                    await client.delete_messages(chat.id, prev_welc)
-                except RPCError:
-                    pass
-            if sent:
-                sql.set_clean_welcome(chat.id, sent.id)
-
-        # Handle Welcome Mutes (Captcha)
-        if welc_mutes and not await is_user_ban_protected(chat, new_mem.id):
-            if welc_mutes == "soft":
-                await chat.restrict_member(new_mem.id, ChatPermissions(can_send_messages=True, can_send_media_messages=False))
-            elif welc_mutes == "strong":
-                 # Implementation of captcha button
-                 pass
-
-@pbot.on_message(filters.left_chat_member & filters.group)
-async def left_member(client: Client, message: Message):
-    chat = message.chat
-    user = message.left_chat_member
-
-    if user.id == BOT_ID:
+    if not should_welc:
         return
 
-    should_goodbye, cust_goodbye, leave_type = sql.get_gdbye_pref(chat.id)
-    if should_goodbye:
-        buttons = sql.get_gdbye_buttons(chat.id)
+    if user.id == BOT_ID:
+        # Bot joined a new chat
+        try:
+            await client.send_message(
+                EVENT_LOGS,
+                f"#NEW_GROUP\n**Group Name:** {html.escape(chat.title)}\n**Chat ID:** `{chat.id}`"
+            )
+        except Exception as e:
+            LOGGER.warning(f"Could not send new group log to EVENT_LOGS: {e}")
+        
+        if message:
+            await message.reply_text("Watashi ga kita!")
+        else:
+            await client.send_message(chat.id, "Watashi ga kita!")
+        return
+
+    if is_user_gbanned(user.id):
+        await client.ban_chat_member(chat.id, user.id)
+        return
+
+    # Special welcomes for devs/sudos etc.
+    if user.id in OWNER_IDS:
+         text = "The King has arrived!"
+         if message: await message.reply_text(text)
+         else: await client.send_message(chat.id, text)
+         return
+    elif user.id in DEV_USERS:
+         text = "One of my creators joined!"
+         if message: await message.reply_text(text)
+         else: await client.send_message(chat.id, text)
+         return
+
+    buttons = sql.get_welc_buttons(chat.id)
+    if cust_welcome:
+        if cust_welcome == sql.DEFAULT_WELCOME:
+            cust_welcome = random.choice(sql.DEFAULT_WELCOME_MESSAGES)
         
         # Robust notename lookup for pagination
         _page_notename = ""
@@ -209,51 +141,137 @@ async def left_member(client: Client, message: Message):
             import re as _re
             def _strip_html(data):
                 return _re.sub(r"<.*?>", "", str(data)).strip()
-            _content_raw = _strip_html(cust_goodbye)
+            _content_raw = _strip_html(cust_welcome)
             for _n in _all_notes:
                 if _strip_html(_n.value) == _content_raw:
                     _page_notename = _n.name.lower()
                     break
         
         keyb = build_keyboard(buttons, notename=_page_notename)
-        keyboard = InlineKeyboardMarkup(keyb) if keyb else None
+        keyboard = InlineKeyboardMarkup(keyb)
         
-        # Format the message (supports all placeholders and tags)
-        res, flags = await format_message(cust_goodbye, user, chat)
-        if not res:
-            res = f"Goodbye {user.first_name}!"
-            
-        if leave_type in (Types.TEXT, Types.BUTTON_TEXT):
-            text_flags = {k: v for k, v in flags.items() if k != "has_spoiler"}
-            await message.reply_text(
+        res, flags = await format_message(cust_welcome, user, chat)
+    else:
+        res, flags = await format_message(random.choice(sql.DEFAULT_WELCOME_MESSAGES), user, chat)
+        keyb = build_keyboard(buttons)
+        keyboard = InlineKeyboardMarkup(keyb)
+
+    sent = None
+    if welc_type in (Types.TEXT, Types.BUTTON_TEXT):
+        text_flags = {k: v for k, v in flags.items() if k != "has_spoiler"}
+        if message:
+            sent = await message.reply_text(
+                res,
+                reply_markup=keyboard,
+                reply_to_message_id=message.id if not sql.clean_service(chat.id) else None,
+                parse_mode=enums.ParseMode.HTML,
+                **text_flags
+            )
+        else:
+            sent = await client.send_message(
+                chat.id,
                 res,
                 reply_markup=keyboard,
                 parse_mode=enums.ParseMode.HTML,
                 **text_flags
             )
+    else:
+        media_flags = {k: v for k, v in flags.items() if k != "disable_web_page_preview"}
+        if welc_type not in (Types.PHOTO, Types.VIDEO):
+            media_flags.pop("has_spoiler", None)
+
+        sent = await client.send_cached_media(
+            chat.id,
+            cust_content,
+            caption=res,
+            reply_markup=keyboard,
+            parse_mode=enums.ParseMode.HTML,
+            **media_flags
+        )
+
+    # Clean previous welcome
+    prev_welc = sql.get_clean_pref(chat.id)
+    if prev_welc:
+        try:
+            await client.delete_messages(chat.id, prev_welc)
+        except RPCError:
+            pass
+    if sent:
+        sql.set_clean_welcome(chat.id, sent.id)
+
+    # Handle Welcome Mutes (Captcha)
+    if welc_mutes and not await is_user_ban_protected(chat, user.id):
+        if welc_mutes == "soft":
+            await chat.restrict_member(user.id, ChatPermissions(can_send_messages=True, can_send_media_messages=False))
+
+async def goodbye_member(client, chat, user, message=None):
+    should_goodbye, cust_goodbye, leave_type = sql.get_gdbye_pref(chat.id)
+    if not should_goodbye or user.id == BOT_ID:
+        return
+
+    buttons = sql.get_gdbye_buttons(chat.id)
+    _page_notename = ""
+    if buttons and any(getattr(b, "url", "") in ("btn_next", "btn_back", "btn_home") for b in buttons):
+        import QueenNoxi.modules.sql.notes_sql as _nsql
+        _all_notes = _nsql.get_all_chat_notes(chat.id)
+        import re as _re
+        def _strip_html(data):
+            return _re.sub(r"<.*?>", "", str(data)).strip()
+        _content_raw = _strip_html(cust_goodbye)
+        for _n in _all_notes:
+            if _strip_html(_n.value) == _content_raw:
+                _page_notename = _n.name.lower()
+                break
+    
+    keyb = build_keyboard(buttons, notename=_page_notename)
+    keyboard = InlineKeyboardMarkup(keyb) if keyb else None
+    
+    res, flags = await format_message(cust_goodbye, user, chat)
+    if not res:
+        res = f"Goodbye {user.first_name}!"
+        
+    if leave_type in (Types.TEXT, Types.BUTTON_TEXT):
+        text_flags = {k: v for k, v in flags.items() if k != "has_spoiler"}
+        if message:
+            await message.reply_text(res, reply_markup=keyboard, parse_mode=enums.ParseMode.HTML, **text_flags)
         else:
-            # Handle media goodbyes
-            # Media DOES NOT support disable_web_page_preview
-            media_flags = {k: v for k, v in flags.items() if k != "disable_web_page_preview"}
-            if leave_type not in (Types.PHOTO, Types.VIDEO):
-                media_flags.pop("has_spoiler", None)
-            
-            # Fetch content (file_id) stored in DB for media goodbye
-            welc_settings = sql.SESSION.query(sql.Welcome).get(str(chat.id))
-            content = welc_settings.custom_content if welc_settings else None
-            sql.SESSION.close()
-            
-            if content:
-                await client.send_cached_media(
-                    chat.id,
-                    content,
-                    caption=res,
-                    reply_markup=keyboard,
-                    parse_mode=enums.ParseMode.HTML,
-                    **media_flags
-                )
-            else:
-                await message.reply_text(res, reply_markup=keyboard, parse_mode=enums.ParseMode.HTML, **flags)
+            await client.send_message(chat.id, res, reply_markup=keyboard, parse_mode=enums.ParseMode.HTML, **text_flags)
+    else:
+        media_flags = {k: v for k, v in flags.items() if k != "disable_web_page_preview"}
+        if leave_type not in (Types.PHOTO, Types.VIDEO):
+            media_flags.pop("has_spoiler", None)
+        
+        welc_settings = sql.SESSION.query(sql.Welcome).get(str(chat.id))
+        content = welc_settings.custom_content if welc_settings else None
+        sql.SESSION.close()
+        
+        if content:
+            await client.send_cached_media(chat.id, content, caption=res, reply_markup=keyboard, parse_mode=enums.ParseMode.HTML, **media_flags)
+        else:
+            if message: await message.reply_text(res, reply_markup=keyboard, parse_mode=enums.ParseMode.HTML, **flags)
+            else: await client.send_message(chat.id, res, reply_markup=keyboard, parse_mode=enums.ParseMode.HTML, **flags)
+
+@pbot.on_message(filters.new_chat_members & filters.group)
+@loggable
+async def new_member_handler(client: Client, message: Message):
+    for user in message.new_chat_members:
+        await greet_member(client, message.chat, user, message=message)
+
+@pbot.on_message(filters.left_chat_member & filters.group)
+async def left_member_handler(client: Client, message: Message):
+    await goodbye_member(client, message.chat, message.left_chat_member, message=message)
+
+@pbot.on_chat_member_updated(filters.group)
+async def member_has_joined_updated(client: Client, member: CallbackQuery):
+    # Large group join detection (no service message)
+    if (not member.old_chat_member or member.old_chat_member.status in (enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.RESTRICTED)) and \
+       member.new_chat_member.status == enums.ChatMemberStatus.MEMBER:
+        await greet_member(client, member.chat, member.new_chat_member.user)
+    
+    # Large group leave detection
+    elif member.old_chat_member and member.old_chat_member.status == enums.ChatMemberStatus.MEMBER and \
+         member.new_chat_member.status in (enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED):
+        await goodbye_member(client, member.chat, member.old_chat_member.user)
 
 @pbot.on_message(filters.command("welcome") & filters.group)
 @user_admin

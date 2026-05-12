@@ -222,29 +222,20 @@ async def save(client: Client, message: Message):
         return
     
     content_to_parse = raw_text[first_space+1:]
-    matches = list(re.finditer(super_note_pattern, content_to_parse, re.DOTALL))
+    # Convert the whole command text to markdown first
+    from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
+    full_markdown = markdown_parser(raw_text, entities)
+    
+    matches = list(re.finditer(super_note_pattern, full_markdown, re.DOTALL))
 
     if matches:
-        from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
         saved = []
         for i, match in enumerate(matches):
             name = match.group(1).lower()
-            raw_inner = match.group(2)
-            lead_strip = len(raw_inner) - len(raw_inner.lstrip())
-            inner_text = raw_inner.strip()
+            inner_markdown = match.group(2).strip()
             
-            abs_start = first_space + 1 + match.start(2) + lead_strip
-            abs_end   = first_space + 1 + match.end(2)
+            t, b = button_markdown_parser(inner_markdown)
             
-            segment_entities = []
-            for ent in entities:
-                if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
-                    import copy
-                    new_ent = copy.copy(ent)
-                    new_ent.offset -= abs_start
-                    segment_entities.append(new_ent)
-            
-            t, b = button_markdown_parser(inner_text, entities=segment_entities)
             sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
             saved.append(name)
 

@@ -41,32 +41,24 @@ async def add_filter(client: Client, message: Message):
         
         # Super-Filter Parsing
         import re
+        import re
         super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
-        matches = list(re.finditer(super_filt_pattern, content_text, re.DOTALL))
+        
+        from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
+        full_markdown = markdown_parser(content_text, content_entities)
+        
+        matches = list(re.finditer(super_filt_pattern, full_markdown, re.DOTALL))
         
         if matches:
-            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
             import QueenNoxi.modules.sql.notes_sql as note_sql
             saved_notes = []
             for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
-                raw_inner = match.group(2)
-                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
-                inner_text = raw_inner.strip()
+                inner_markdown = match.group(2).strip()
                 
-                abs_start = match.start(2) + lead_strip
-                abs_end   = match.end(2)
-                segment_entities = []
-                for ent in content_entities:
-                    if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
-                        import copy
-                        new_ent = copy.copy(ent)
-                        new_ent.offset -= abs_start
-                        segment_entities.append(new_ent)
+                t, b = button_markdown_parser(inner_markdown)
                 
-                t, b = button_markdown_parser(inner_text, entities=segment_entities)
-                
-                # IMPORTANT: Tags are saved as NOTES, not Filters!
+                # Save tags as NOTES
                 note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
                 saved_notes.append(keyword)
 

@@ -53,13 +53,15 @@ async def add_filter(client: Client, message: Message):
             saved_notes = []
             for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
-                inner_text = match.group(2).strip("\n")
-                
                 raw_inner = match.group(2)
-                lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
+                
+                # Strip leading/trailing whitespace but keep track of how many characters we removed from the START
+                # for entity offset adjustment.
+                inner_text = raw_inner.strip()
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
                 
                 abs_start = match.start(2) + lead_strip
-                abs_end   = match.end(2)
+                abs_end   = abs_start + len(inner_text)
                 
                 segment_entities = []
                 for ent in content_entities:
@@ -130,13 +132,13 @@ async def add_filter(client: Client, message: Message):
             saved_notes = []
             for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
-                inner_text = match.group(2).strip("\n")
-                
                 raw_inner = match.group(2)
-                lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
+                
+                inner_text = raw_inner.strip()
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
                 
                 abs_start = match.start(2) + lead_strip
-                abs_end   = match.end(2)
+                abs_end   = abs_start + len(inner_text)
                 
                 segment_entities = []
                 for ent in entities:

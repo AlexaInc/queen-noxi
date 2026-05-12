@@ -50,17 +50,18 @@ async def add_filter(client: Client, message: Message):
             saved_notes = []
             for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
-                inner_text = match.group(2).strip()
+                raw_inner = match.group(2)
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
+                inner_text = raw_inner.strip("\n")
                 
-                # Slicing entities
-                start_idx = match.start(2)
-                end_idx = match.end(2)
+                abs_start = match.start(2) + lead_strip
+                abs_end   = match.end(2)
                 segment_entities = []
                 for ent in content_entities:
-                    if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                    if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
                         import copy
                         new_ent = copy.copy(ent)
-                        new_ent.offset -= start_idx
+                        new_ent.offset -= abs_start
                         segment_entities.append(new_ent)
                 
                 t, b = button_markdown_parser(inner_text, entities=segment_entities)

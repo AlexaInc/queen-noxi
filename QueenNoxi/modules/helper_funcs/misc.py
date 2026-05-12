@@ -99,28 +99,28 @@ async def send_to_list(client, send_to: list, message: str, parse_mode=None) -> 
         except Exception:
             pass
 
-def build_keyboard(buttons):
+def build_keyboard(buttons, notename: str = ""):
     keyb = []
 
     COLOR_MAP = {
         "success": enums.ButtonStyle.SUCCESS,
         "danger":  enums.ButtonStyle.DANGER,
         "primary": enums.ButtonStyle.PRIMARY,
-        "warning": enums.ButtonStyle.DANGER,   # no native warning; map to red
+        "warning": enums.ButtonStyle.DANGER,
     }
 
     for btn in buttons:
         style = COLOR_MAP.get(btn.color, enums.ButtonStyle.DEFAULT) if btn.color else enums.ButtonStyle.DEFAULT
 
         if btn.url.startswith("#"):
-            note_name = btn.url[1:]
-            button = InlineKeyboardButton(btn.name, callback_data=f"note_{note_name}", style=style)
+            note_name_ref = btn.url[1:]
+            button = InlineKeyboardButton(btn.name, callback_data=f"note_{note_name_ref}", style=style)
         elif btn.url == "btn_next":
-            button = InlineKeyboardButton(btn.name, callback_data="page_next", style=style)
+            button = InlineKeyboardButton(btn.name, callback_data=f"page_next:{notename}", style=style)
         elif btn.url == "btn_back":
-            button = InlineKeyboardButton(btn.name, callback_data="page_prev", style=style)
+            button = InlineKeyboardButton(btn.name, callback_data=f"page_prev:{notename}", style=style)
         elif btn.url == "btn_home":
-            button = InlineKeyboardButton(btn.name, callback_data="page_home", style=style)
+            button = InlineKeyboardButton(btn.name, callback_data=f"page_home:{notename}", style=style)
         else:
             button = InlineKeyboardButton(btn.name, url=btn.url, style=style)
 

@@ -55,7 +55,7 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
             parse_mode = None
             text += revert_buttons(buttons)
         else:
-            keyb = build_keyboard(buttons)
+            keyb = build_keyboard(buttons, notename=notename)
 
         keyboard = InlineKeyboardMarkup(keyb) if keyb else None
 
@@ -153,27 +153,29 @@ async def save(client: Client, message: Message):
             saved = []
             for i, match in enumerate(matches):
                 name = match.group(1).lower()
-                inner_text = match.group(2)
+                raw_inner = match.group(2)          # may start/end with \n
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))  # chars stripped from left
+                inner_text = raw_inner.strip("\n")  # strip leading/trailing newlines only
                 
-                # Slicing entities
-                start_idx = match.start(2)
-                end_idx = match.end(2)
+                # Slicing entities - adjust for tag position AND stripped leading newlines
+                abs_start = match.start(2) + lead_strip  # first real char of content
+                abs_end   = match.end(2)
                 segment_entities = []
                 for ent in content_entities:
-                    if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                    if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
                         import copy
                         new_ent = copy.copy(ent)
-                        new_ent.offset -= start_idx
+                        new_ent.offset -= abs_start  # offset within stripped inner_text
                         segment_entities.append(new_ent)
                 
                 t, b = button_markdown_parser(inner_text, entities=segment_entities)
                 sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
                 saved.append(name)
                 
-                # If specific note_name was provided, point it to the first tag
                 if i == 0 and note_name:
                     sql.add_note_to_db(chat_id, note_name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
-                    saved.append(note_name)
+                    if note_name != name:
+                        saved.append(note_name)
             
             await message.reply_text(f"Saved {len(saved)} super-notes from reply: {', '.join(saved)}")
             return
@@ -222,25 +224,26 @@ async def save(client: Client, message: Message):
         saved = []
         for i, match in enumerate(matches):
             name = match.group(1).lower()
-            inner_text = match.group(2)
-            start_idx = first_space + 1 + match.start(2)
-            end_idx = first_space + 1 + match.end(2)
+            raw_inner = match.group(2)
+            lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
+            inner_text = raw_inner.strip("\n")
+            
+            abs_start = first_space + 1 + match.start(2) + lead_strip
+            abs_end   = first_space + 1 + match.end(2)
             
             segment_entities = []
             for ent in entities:
-                if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
                     import copy
                     new_ent = copy.copy(ent)
-                    new_ent.offset -= start_idx
+                    new_ent.offset -= abs_start
                     segment_entities.append(new_ent)
             
             t, b = button_markdown_parser(inner_text, entities=segment_entities)
             sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
             saved.append(name)
 
-            # Point primary note_name to first tag if provided
             if i == 0:
-                # Find the note_name from command
                 args = raw_text.split()
                 if len(args) >= 2:
                     cmd_note_name = args[1].lower()
@@ -327,29 +330,23 @@ async def note_callback(client: Client, query):
     await get(client, query.message, notename, show_none=False, query=query)
     await query.answer()
 
-@pbot.on_callback_query(filters.regex(r"^page_(next|prev|home)$"))
+@pbot.on_callback_query(filters.regex(r"^page_(next|prev|home)"))
 async def paginate_callback(client: Client, query):
-    action = query.data  # page_next / page_prev / page_home
+    data = query.data.split(":")
+    action = data[0]
+    current_note = data[1] if len(data) > 1 else None
     chat_id = query.message.chat.id
-
-    # Determine the current note by scanning the existing message buttons for note_ callbacks
-    current_note = None
-    if query.message.reply_markup:
-        for row in query.message.reply_markup.inline_keyboard:
-            for btn in row:
-                if btn.callback_data and btn.callback_data.startswith("note_"):
-                    # Pick the first found note reference as a hint — typically "[Back](#prev)" button
-                    current_note = btn.callback_data.split("_", 1)[1]
-                    break
-            if current_note:
-                break
 
     # Get all notes in the chat sorted alphabetically to determine prev/next
     all_notes = sql.get_all_chat_notes(chat_id)
     note_names = sorted([n.name.lower() for n in all_notes])
 
+    if not note_names:
+        await query.answer("No notes found in this chat.", show_alert=True)
+        return
+
     if action == "page_home":
-        target = note_names[0] if note_names else None
+        target = note_names[0]
     elif current_note and current_note in note_names:
         idx = note_names.index(current_note)
         if action == "page_next":
@@ -357,8 +354,8 @@ async def paginate_callback(client: Client, query):
         else:  # page_prev
             target = note_names[(idx - 1) % len(note_names)]
     else:
-        await query.answer("Could not determine current page.", show_alert=True)
-        return
+        # Fallback if no current_note or not in list
+        target = note_names[0]
 
     if target:
         await get(client, query.message, target, show_none=False, query=query)

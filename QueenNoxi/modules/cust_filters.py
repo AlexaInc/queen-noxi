@@ -326,4 +326,6 @@ __help__ = """
 • `/stop <keyword>`: Stop a filter
 • `/filters`: List all filters
 • `/removeallfilters`: Stop ALL filters (Owner only)
+
+**Note:** See the `Formatting` module for help on variables and buttons!
 """

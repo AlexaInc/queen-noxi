@@ -127,8 +127,7 @@ async def new_member(client: Client, message: Message):
             else:
                 res, flags = await format_message(random.choice(sql.DEFAULT_WELCOME_MESSAGES), new_mem, chat)
 
-            if welc_type == Types.TEXT or welc_type == Types.BUTTON_TEXT:
-                flags.pop("has_spoiler", None)
+            if welc_type in (Types.TEXT, Types.BUTTON_TEXT):
                 sent = await message.reply_text(
                     res,
                     reply_markup=keyboard,
@@ -136,13 +135,20 @@ async def new_member(client: Client, message: Message):
                     **flags
                 )
             else:
+                # Media DOES NOT support disable_web_page_preview
+                media_flags = {k: v for k, v in flags.items() if k != "disable_web_page_preview"}
+                
+                # Check photo/video for spoiler support
+                if welc_type not in (Types.PHOTO, Types.VIDEO):
+                    media_flags.pop("has_spoiler", None)
+
                 # Handle media welcomes
                 sent = await client.send_cached_media(
                     chat.id,
                     cust_content,
                     caption=res,
                     reply_markup=keyboard,
-                    **flags
+                    **media_flags
                 )
 
             # Clean previous welcome

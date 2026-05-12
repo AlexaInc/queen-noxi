@@ -506,7 +506,10 @@ async def list_notes(client: Client, message: Message):
 
 __mod_name__ = "Notes"
 __help__ = """
- ❍ `/get <notename>`: get the note with this notename
+ ❍• `/get <notename>`: Get a note
+• `/privatenotes <on/off>`: Whether to send notes in PM or group
+
+**Note:** See the `Formatting` module for help on variables and buttons!
  ❍ `#<notename>`: same as /get
  ❍ `/notes` or `/saved`: list all saved notes in this chat
  ❍ `/save <notename> <notedata>`: saves notedata as a note with name notename

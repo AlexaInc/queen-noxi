@@ -364,30 +364,46 @@ async def note_callback(client: Client, query):
 
 @pbot.on_callback_query(filters.regex(r"^page_(next|prev|home)"))
 async def paginate_callback(client: Client, query):
+    import re as _re
     data = query.data.split(":")
     action = data[0]
     current_note = data[1] if len(data) > 1 else None
     chat_id = query.message.chat.id
 
-    # Get all notes in the chat sorted alphabetically to determine prev/next
     all_notes = sql.get_all_chat_notes(chat_id)
-    note_names = sorted([n.name.lower() for n in all_notes])
+    all_note_names = sorted([n.name.lower() for n in all_notes])
 
-    if not note_names:
+    if not all_note_names:
         await query.answer("No notes found in this chat.", show_alert=True)
         return
 
-    if action == "page_home":
-        target = note_names[0]
-    elif current_note and current_note in note_names:
-        idx = note_names.index(current_note)
-        if action == "page_next":
-            target = note_names[(idx + 1) % len(note_names)]
-        else:  # page_prev
-            target = note_names[(idx - 1) % len(note_names)]
+    # --- Group-aware navigation ---
+    # Detect page family: strip trailing digits from current note.
+    # e.g. "p1" → prefix "p", "page1" → prefix "page", "te1" → prefix "te"
+    if current_note:
+        m = _re.match(r"^(.*?)(\d+)$", current_note)
+        if m:
+            prefix = m.group(1)
+            # Find all notes that belong to this page family, sorted numerically
+            family = sorted(
+                [n for n in all_note_names if _re.match(rf"^{_re.escape(prefix)}\d+$", n)],
+                key=lambda x: int(_re.search(r"\d+$", x).group())
+            )
+        else:
+            family = all_note_names  # Fallback: no numeric suffix
     else:
-        # Fallback if no current_note or not in list
-        target = note_names[0]
+        family = all_note_names
+
+    if action == "page_home":
+        target = family[0] if family else all_note_names[0]
+    elif current_note and current_note in family:
+        idx = family.index(current_note)
+        if action == "page_next":
+            target = family[(idx + 1) % len(family)]
+        else:  # page_prev
+            target = family[(idx - 1) % len(family)]
+    else:
+        target = family[0] if family else all_note_names[0]
 
     if target:
         await get(client, query.message, target, show_none=False, query=query)

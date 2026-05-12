@@ -442,6 +442,17 @@ async def main():
     try:
         await telethn.start(bot_token=TOKEN)
         LOGGER.info("[Telethon] Client started.")
+        
+        # Export and save Telethon session string
+        try:
+            from telethon.sessions import StringSession
+            if isinstance(telethn.session, StringSession):
+                ts = telethn.session.save()
+                save_session(f"TELETHON_{BOT_ID}", ts)
+                LOGGER.info("[Telethon] Saved session string for persistence.")
+        except Exception as e:
+            LOGGER.warning(f"Could not export/save Telethon session string: {e}")
+            
     except TlFloodWait as e:
         LOGGER.warning(f"[Telethon] FloodWait on start: {e.seconds}s.")
     except Exception as e:

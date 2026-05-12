@@ -9,6 +9,7 @@ load_dotenv()
 from aiohttp import ClientSession
 from pyrogram import Client
 from telethon import TelegramClient
+from telethon.sessions import StringSession
 
 StartTime = time.time()
 
@@ -131,10 +132,12 @@ TIGERS    = list(TIGERS)
 # ── Persistent Session Handling ────────────────────────────────────────────────
 BOT_ID = int(TOKEN.split(":")[0])
 SESSION_STRING = None
+TELETHON_SESSION = None
 
 try:
     from QueenNoxi.modules.sql.session_sql import get_session
     SESSION_STRING = get_session(BOT_ID)
+    TELETHON_SESSION = get_session(f"TELETHON_{BOT_ID}")
 except Exception as e:
     LOGGER.warning(f"Could not load session from database: {e}")
 
@@ -162,7 +165,12 @@ else:
     )
 
 # ── Telethon client ──────────────────────────────────────────────────────────
-telethn = TelegramClient("queennoxi", API_ID, API_HASH)
+if TELETHON_SESSION:
+    LOGGER.info("Using persistent session string for Telethon.")
+    telethn = TelegramClient(StringSession(TELETHON_SESSION), API_ID, API_HASH)
+else:
+    LOGGER.info("No Telethon session string found. Using default session.")
+    telethn = TelegramClient("queennoxi", API_ID, API_HASH)
 
 # ── Shared HTTP session ───────────────────────────────────────────────────────
 aiohttpsession: ClientSession = None

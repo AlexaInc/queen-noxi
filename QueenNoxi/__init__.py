@@ -169,8 +169,8 @@ if TELETHON_SESSION:
     LOGGER.info("Using persistent session string for Telethon.")
     telethn = TelegramClient(StringSession(TELETHON_SESSION), API_ID, API_HASH)
 else:
-    LOGGER.info("No Telethon session string found. Using default session.")
-    telethn = TelegramClient("queennoxi", API_ID, API_HASH)
+    LOGGER.info("No Telethon session string found. Using new StringSession.")
+    telethn = TelegramClient(StringSession(), API_ID, API_HASH)
 
 # ── Shared HTTP session ───────────────────────────────────────────────────────
 aiohttpsession: ClientSession = None

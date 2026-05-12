@@ -446,10 +446,9 @@ async def main():
         # Export and save Telethon session string
         try:
             from telethon.sessions import StringSession
-            if isinstance(telethn.session, StringSession):
-                ts = telethn.session.save()
-                save_session(f"TELETHON_{BOT_ID}", ts)
-                LOGGER.info("[Telethon] Saved session string for persistence.")
+            session_str = telethn.session.save()
+            save_session(f"TELETHON_{BOT_ID}", session_str)
+            LOGGER.info("[Telethon] Saved session string for persistence.")
         except Exception as e:
             LOGGER.warning(f"Could not export/save Telethon session string: {e}")
             

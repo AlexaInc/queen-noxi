@@ -15,7 +15,11 @@ MATCH_MD = re.compile(
 )
 
 LINK_REGEX = re.compile(r"(?<!\\)\[.+?\]\((.*?)\)")
-BTN_URL_REGEX = re.compile(r"(\[([^\[]+?)\]\(buttonurl(?:#([^:]+))?://(/{0,2})(.+?)(:same)?\))")
+# Support both Markdown style [X](buttonurl://Y) and HTML style <a href="buttonurl://Y">X</a>
+BTN_URL_REGEX = re.compile(
+    r"(\[([^\[]+?)\]\(buttonurl(?:#([^:]+))?://(/{0,2})(.+?)(:same)?\))|"
+    r'(<a href="buttonurl(?:#([^:"]+))?://(/{0,2})(.+?)(:same)?">([^<]+?)</a>)'
+)
 
 from pyrogram.parser.markdown import Markdown
 
@@ -30,6 +34,7 @@ def _selective_escape(to_parse: str) -> str:
     return to_parse
 
 from pyrogram.parser.html import HTML
+from pyrogram.parser import utils as parser_utils
 import html
 
 def content_to_html(txt: str, entities: List[MessageEntity] = None) -> str:
@@ -37,10 +42,14 @@ def content_to_html(txt: str, entities: List[MessageEntity] = None) -> str:
         return html.escape(str(txt))
     
     try:
-        # User Pyrogram's native HTML unparser for 100% accuracy with all entity types
-        text_str = str(txt)
-        return HTML(None).unparse(text_str, entities)
-    except Exception:
+        # Use Pyrogram's native HTML unparser. 
+        # Crucially, it MUST have a surrogated string if entities have UTF-16 offsets.
+        text_surrogated = parser_utils.add_surrogates(str(txt))
+        html_text = HTML(None).unparse(text_surrogated, entities)
+        return parser_utils.remove_surrogates(html_text)
+    except Exception as e:
+        import logging
+        logging.error(f"HTML unparse failed: {e}")
         return html.escape(str(txt))
 
 # Wrapper for backward compatibility (renamed internal logic)
@@ -55,35 +64,29 @@ class Button:
         self.color = color
 
 def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int = 0) -> Tuple[str, List[Button]]:
-    markdown_note = markdown_parser(txt, entities, offset)
+    full_content = content_to_html(txt, entities)
     prev = 0
     note_data = ""
     buttons = []
-    for match in BTN_URL_REGEX.finditer(markdown_note):
-        n_escapes = 0
-        to_check = match.start(1) - 1
-        while to_check > 0 and markdown_note[to_check] == "\\":
-            n_escapes += 1
-            to_check -= 1
+    for match in BTN_URL_REGEX.finditer(full_content):
+        # Match groups for Markdown: 2=name, 3=color, 5=url, 6=:same
+        # Match groups for HTML: 11=name, 7=color, 9=url, 10=:same
+        if match.group(1): # Markdown match
+            name = match.group(2)
+            color = match.group(3)
+            url = match.group(5)
+            same = bool(match.group(6))
+        else: # HTML match
+            name = match.group(11)
+            color = match.group(7)
+            url = match.group(9)
+            same = bool(match.group(10))
 
-        if n_escapes % 2 == 0:
-            # match.group(2) -> name
-            # match.group(3) -> color
-            # match.group(5) -> url/back/next/home
-            # match.group(6) -> :same
-            buttons.append(Button(
-                match.group(2),
-                match.group(5),
-                bool(match.group(6)),
-                match.group(3)
-            ))
-            note_data += markdown_note[prev : match.start(1)]
-            prev = match.end(1)
-        else:
-            note_data += markdown_note[prev : match.start(1) - 1]
-            prev = match.start(1) - 1
+        buttons.append(Button(name, url, same, color))
+        note_data += full_content[prev : match.start()]
+        prev = match.end()
     else:
-        note_data += markdown_note[prev:]
+        note_data += full_content[prev:]
 
     return note_data, buttons
 

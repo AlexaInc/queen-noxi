@@ -278,8 +278,15 @@ async def reply_filter(client: Client, message: Message):
             if buttons and any(getattr(b, "url", "") in ("btn_next", "btn_back", "btn_home") for b in buttons):
                 import QueenNoxi.modules.sql.notes_sql as _nsql
                 _all_notes = _nsql.get_all_chat_notes(chat_id)
+                
+                # Robust comparison: remove HTML and strip whitespace
+                import re as _re
+                def _strip_html(data):
+                    return _re.sub(r"<.*?>", "", str(data)).strip()
+                
+                _filt_raw = _strip_html(filt.reply_text)
                 for _n in _all_notes:
-                    if _n.value == filt.reply_text:
+                    if _strip_html(_n.value) == _filt_raw:
                         _page_notename = _n.name.lower()
                         break
             

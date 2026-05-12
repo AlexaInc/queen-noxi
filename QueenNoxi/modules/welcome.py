@@ -179,11 +179,46 @@ async def left_member(client: Client, message: Message):
     if user.id == BOT_ID:
         return
 
-    should_goodbye, cust_goodbye, goodbye_type = sql.get_gdbye_pref(chat.id)
+    should_goodbye, cust_goodbye, leave_type = sql.get_gdbye_pref(chat.id)
     if should_goodbye:
-        first_name = user.first_name or "User"
-        res = cust_goodbye.format(first=first_name) if cust_goodbye else f"Goodbye {first_name}!"
-        await message.reply_text(res)
+        buttons = sql.get_gdbye_buttons(chat.id)
+        keyb = build_keyboard(buttons)
+        keyboard = InlineKeyboardMarkup(keyb) if keyb else None
+        
+        # Format the message (supports all placeholders and tags)
+        res, flags = await format_message(cust_goodbye, user, chat)
+        if not res:
+            res = f"Goodbye {user.first_name}!"
+            
+        if leave_type in (Types.TEXT, Types.BUTTON_TEXT):
+            text_flags = {k: v for k, v in flags.items() if k != "has_spoiler"}
+            await message.reply_text(
+                res,
+                reply_markup=keyboard,
+                **text_flags
+            )
+        else:
+            # Handle media goodbyes
+            # Media DOES NOT support disable_web_page_preview
+            media_flags = {k: v for k, v in flags.items() if k != "disable_web_page_preview"}
+            if leave_type not in (Types.PHOTO, Types.VIDEO):
+                media_flags.pop("has_spoiler", None)
+            
+            # Fetch content (file_id) stored in DB for media goodbye
+            welc_settings = sql.SESSION.query(sql.Welcome).get(str(chat.id))
+            content = welc_settings.custom_content if welc_settings else None
+            sql.SESSION.close()
+            
+            if content:
+                await client.send_cached_media(
+                    chat.id,
+                    content,
+                    caption=res,
+                    reply_markup=keyboard,
+                    **media_flags
+                )
+            else:
+                await message.reply_text(res, reply_markup=keyboard, **flags)
 
 @pbot.on_message(filters.command("welcome") & filters.group)
 @user_admin
@@ -209,17 +244,35 @@ async def set_welcome_msg(client: Client, message: Message):
     chat = message.chat
     
     # Super-Note Auto-save in SetWelcome
-    if message.reply_to_message:
+    if message.reply_to_message or (message.text and "<" in message.text):
         replied = message.reply_to_message
-        content_text = replied.text or replied.caption or ""
-        content_entities = replied.entities or replied.caption_entities or []
+        content_text = replied.text or replied.caption if replied else (message.text or message.caption)
+        content_entities = (replied.entities or replied.caption_entities) if replied else (message.entities or message.caption_entities)
+        
+        # If not a reply, we must offset entities
+        if not replied:
+            args = message.text.split(None, 1)
+            if len(args) >= 2:
+                content_text = args[1]
+                base_offset = message.text.find(content_text)
+                new_ents = []
+                for ent in content_entities:
+                    if ent.offset >= base_offset:
+                        import copy
+                        ne = copy.copy(ent)
+                        ne.offset -= base_offset
+                        new_ents.append(ne)
+                content_entities = new_ents
+
+        from pyrogram.parser.utils import add_surrogates, remove_surrogates
+        surrogated_text = add_surrogates(content_text)
         
         import re
         super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
-        matches = list(re.finditer(super_note_pattern, content_text, re.DOTALL))
+        matches = list(re.finditer(super_note_pattern, surrogated_text, re.DOTALL))
         
         if matches:
-            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
+            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser, content_to_html
             import QueenNoxi.modules.sql.notes_sql as note_sql
             saved_notes = []
             main_welcome_text = None
@@ -227,10 +280,15 @@ async def set_welcome_msg(client: Client, message: Message):
             
             for i, match in enumerate(matches):
                 name = match.group(1).lower()
-                inner_text = match.group(2).strip()
+                raw_inner = match.group(2)
                 
-                start_idx = match.start(2)
+                # Correct entity offsets for super-tags
+                inner_text_surrogated = raw_inner.strip()
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
+                
+                start_idx = match.start(2) + lead_strip
                 end_idx = match.end(2)
+                
                 segment_entities = []
                 for ent in content_entities:
                     if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
@@ -239,7 +297,10 @@ async def set_welcome_msg(client: Client, message: Message):
                         new_ent.offset -= start_idx
                         segment_entities.append(new_ent)
                 
-                t, b = button_markdown_parser(inner_text, entities=segment_entities)
+                # Convert to HTML
+                html_text = remove_surrogates(content_to_html(inner_text_surrogated, segment_entities))
+                t, b = button_markdown_parser(html_text, is_html=True)
+                
                 note_sql.add_note_to_db(chat.id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
                 saved_notes.append(name)
                 
@@ -254,7 +315,6 @@ async def set_welcome_msg(client: Client, message: Message):
                 f"Detected and saved {len(saved_notes)} pages as notes: {', '.join(saved_notes)}"
             )
             return
-            return
     
     text, data_type, content, buttons = await get_welcome_type(message)
 
@@ -265,12 +325,123 @@ async def set_welcome_msg(client: Client, message: Message):
     sql.set_custom_welcome(chat.id, content, text, data_type, buttons)
     await message.reply_text("Successfully set custom welcome message!")
 
+@pbot.on_message(filters.command("goodbye") & filters.group)
+@user_admin
+async def goodbye(client: Client, message: Message):
+    args = message.command[1:]
+    chat = message.chat
+    
+    if not args:
+        pref, _, _ = sql.get_gdbye_pref(chat.id)
+        await message.reply_text(f"Goodbye preference is set to: `{pref}`")
+        return
+
+    if args[0].lower() in ("on", "yes"):
+        sql.set_gdbye_preference(chat.id, True)
+        await message.reply_text("I'll say goodbye when members leave!")
+    elif args[0].lower() in ("off", "no"):
+        sql.set_gdbye_preference(chat.id, False)
+        await message.reply_text("I'll stop saying goodbye.")
+
+@pbot.on_message(filters.command("setgoodbye") & filters.group)
+@user_admin
+async def set_goodbye_msg(client: Client, message: Message):
+    chat = message.chat
+    
+    # Non-reply text can contain super-notes too!
+    if message.reply_to_message or (message.text and "<" in message.text):
+        replied = message.reply_to_message
+        content_text = replied.text or replied.caption if replied else (message.text or message.caption)
+        content_entities = (replied.entities or replied.caption_entities) if replied else (message.entities or message.caption_entities)
+        
+        # If not a reply, we must offset entities
+        if not replied:
+            args = message.text.split(None, 1)
+            if len(args) >= 2:
+                content_text = args[1]
+                base_offset = message.text.find(content_text)
+                new_ents = []
+                for ent in content_entities:
+                    if ent.offset >= base_offset:
+                        import copy
+                        ne = copy.copy(ent)
+                        ne.offset -= base_offset
+                        new_ents.append(ne)
+                content_entities = new_ents
+
+        from pyrogram.parser.utils import add_surrogates, remove_surrogates
+        surrogated_text = add_surrogates(content_text)
+        
+        super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        matches = list(re.finditer(super_note_pattern, surrogated_text, re.DOTALL))
+        
+        if matches:
+            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser, content_to_html
+            import QueenNoxi.modules.sql.notes_sql as note_sql
+            saved_notes = []
+            main_goodbye_text = None
+            main_goodbye_buttons = []
+            
+            for i, match in enumerate(matches):
+                name = match.group(1).lower()
+                raw_inner = match.group(2)
+                
+                # Correct entity offsets for super-tags
+                inner_text_surrogated = raw_inner.strip()
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
+                
+                start_idx = match.start(2) + lead_strip
+                end_idx = match.end(2)
+                
+                segment_entities = []
+                for ent in content_entities:
+                    if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                        import copy
+                        new_ent = copy.copy(ent)
+                        new_ent.offset -= start_idx
+                        segment_entities.append(new_ent)
+                
+                # Convert to HTML
+                html_text = remove_surrogates(content_to_html(inner_text_surrogated, segment_entities))
+                t, b = button_markdown_parser(html_text, is_html=True)
+                
+                note_sql.add_note_to_db(chat.id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
+                saved_notes.append(name)
+                
+                if i == 0:
+                    main_goodbye_text = t
+                    main_goodbye_buttons = b
+            
+            # Set the first tag as goodbye
+            sql.set_custom_gdbye(chat.id, main_goodbye_text, Types.BUTTON_TEXT if main_goodbye_buttons else Types.TEXT, main_goodbye_buttons)
+            await message.reply_text(
+                f"Successfully set your goodbye message!\n"
+                f"Detected and saved {len(saved_notes)} pages as notes: {', '.join(saved_notes)}"
+            )
+            return
+
+    text, data_type, content, buttons = await get_welcome_type(message)
+
+    if not data_type:
+        await message.reply_text("You didn't specify what to reply with!")
+        return
+
+    sql.set_custom_gdbye(chat.id, text, data_type, buttons)
+    await message.reply_text("Successfully set custom goodbye message!")
+
 @pbot.on_message(filters.command("resetwelcome") & filters.group)
 @user_admin
 async def reset_welcome(client: Client, message: Message):
     chat = message.chat
     sql.set_custom_welcome(chat.id, None, sql.DEFAULT_WELCOME, Types.TEXT)
     await message.reply_text("Successfully reset welcome message to default!")
+
+@pbot.on_message(filters.command("resetgoodbye") & filters.group)
+@user_admin
+async def reset_goodbye(client: Client, message: Message):
+    chat = message.chat
+    sql.set_custom_gdbye(chat.id, sql.DEFAULT_GOODBYE, Types.TEXT)
+    await message.reply_text("Successfully reset goodbye message to default!")
 
 @pbot.on_message(filters.command("cleanservice") & filters.group)
 @user_admin
@@ -297,5 +468,8 @@ Manage welcome and goodbye messages in your group.
 • `/welcome <on/off>`: Toggle greetings
 • `/setwelcome <msg>`: Set custom welcome
 • `/resetwelcome`: Reset welcome
+• `/goodbye <on/off>`: Toggle goodbye messages
+• `/setgoodbye <msg>`: Set custom goodbye
+• `/resetgoodbye`: Reset goodbye
 • `/cleanservice <on/off>`: Clean join/leave messages
 """

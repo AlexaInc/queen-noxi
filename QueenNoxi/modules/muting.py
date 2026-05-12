@@ -234,5 +234,6 @@ __help__ = """
  ❍ /amute <userhandle>: Animated mute a user.
  ❍ /tmute <userhandle> x(m/h/d): Mutes a user for x time.
  ❍ /unmute <userhandle>: Unmutes a user.
+ ❍ /aunmute <userhandle>: Animated unmute a user.
  ❍ /dmute <userhandle>: Silences a user and deletes the command.
 """

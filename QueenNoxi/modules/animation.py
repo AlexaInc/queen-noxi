@@ -172,6 +172,14 @@ mute_ani = [
     "🤐 MUTED! 🤐", 
     "✅"
 ]
+unmute_ani = [
+    "🔓 Breaking the seal...", 
+    "🗝️ Unlocking the mouth...", 
+    "🍃 Restoring voice...", 
+    "🔥 Vibe check... Passed!", 
+    "🗣️ You are free to speak!", 
+    "✅"
+]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -452,6 +460,34 @@ async def amute_cmd(client: Client, message: Message):
             
     await admin_animate(client, message, "mute", mute_ani, "muted", mute_logic)
 
+@pbot.on_message(filters.command("aunmute") & filters.group)
+@user_admin
+@bot_admin
+@can_restrict
+async def aunmute_cmd(client: Client, message: Message):
+    async def unmute_logic(uid):
+        from pyrogram.types import ChatPermissions
+        try:
+            await message.chat.restrict_member(
+                uid,
+                ChatPermissions(
+                    can_send_messages=True,
+                    can_send_media_messages=True,
+                    can_send_other_messages=True,
+                    can_add_web_page_previews=True,
+                    can_send_polls=True,
+                    can_change_info=True,
+                    can_invite_users=True,
+                    can_pin_messages=True
+                )
+            )
+            return True
+        except RPCError as e:
+            await message.reply_text(f"❌ Failed to unmute: {e.MESSAGE}")
+            return False
+            
+    await admin_animate(client, message, "unmute", unmute_ani, "unmuted", unmute_logic)
+
 
 
 __mod_name__ = "Animation"
@@ -471,5 +507,6 @@ __help__ = """
 • `/clock` — ᴄʟᴏᴄᴋ ᴀɴɪᴍᴀᴛɪᴏɴ
 • `/aban` — ᴀɴɪᴍᴀᴛᴇᴅ ʙᴀɴ
 • `/amute` — ᴀɴɪᴍᴀᴛᴇᴅ ᴍᴜᴛᴇ
+• `/aunmute` — ᴀɴɪᴍᴀᴛᴇᴅ ᴜɴᴍᴜᴛᴇ
 """
 

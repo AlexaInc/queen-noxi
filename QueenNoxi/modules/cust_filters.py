@@ -26,6 +26,46 @@ HANDLER_GROUP = 10
 @user_admin
 @connection_status
 async def add_filter(client: Client, message: Message):
+    # Super-Filter Parsing
+    import re
+    super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+    raw_text = message.text or message.caption
+    
+    # We want the text after the command
+    first_space = raw_text.find(" ")
+    if first_space != -1:
+        content_to_parse = raw_text[first_space+1:]
+        matches = list(re.finditer(super_filt_pattern, content_to_parse, re.DOTALL))
+        
+        if matches:
+            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
+            entities = message.entities or message.caption_entities or []
+            saved_filters = []
+            for match in matches:
+                keyword = match.group(1).lower()
+                inner_text = match.group(2).strip()
+                
+                # Start and End indices in raw_text
+                start_idx = first_space + 1 + match.start(2)
+                end_idx = first_space + 1 + match.end(2)
+                
+                # Filter and shift entities
+                segment_entities = []
+                for ent in entities:
+                    if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                        import copy
+                        new_ent = copy.copy(ent)
+                        new_ent.offset -= start_idx
+                        segment_entities.append(new_ent)
+                
+                t, b = button_markdown_parser(inner_text, entities=segment_entities)
+                sql.add_filter(message.chat.id, keyword, t, buttons=b)
+                saved_filters.append(keyword)
+            
+            await message.reply_text(f"Successfully saved {len(saved_filters)} filters: {', '.join(saved_filters)}")
+            return
+
+    # Extract keyword and content
     chat_id = message.chat.id
     args = message.text.split(None, 1)
 

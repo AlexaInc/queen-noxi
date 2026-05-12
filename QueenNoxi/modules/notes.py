@@ -114,6 +114,48 @@ async def hash_get(client: Client, message: Message):
 @connection_status
 async def save(client: Client, message: Message):
     chat_id = message.chat.id
+    raw_text = message.text or message.caption
+    import re
+    super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+    
+    # We want the text after the command
+    first_space = raw_text.find(" ")
+    if first_space == -1:
+        await message.reply_text("Dude, you need to specify a note name or use super-tags!")
+        return
+    
+    content_to_parse = raw_text[first_space+1:]
+    matches = list(re.finditer(super_note_pattern, content_to_parse, re.DOTALL))
+
+    if matches:
+        from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
+        entities = message.entities or message.caption_entities or []
+        saved = []
+        for match in matches:
+            name = match.group(1).lower()
+            inner_text = match.group(2)
+            
+            # Start and End indices in raw_text
+            start_idx = first_space + 1 + match.start(2)
+            end_idx = first_space + 1 + match.end(2)
+            
+            # Filter and shift entities
+            segment_entities = []
+            for ent in entities:
+                if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                    # Clone entity and shift offset
+                    import copy
+                    new_ent = copy.copy(ent)
+                    new_ent.offset -= start_idx
+                    segment_entities.append(new_ent)
+            
+            t, b = button_markdown_parser(inner_text, entities=segment_entities)
+            sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
+            saved.append(name)
+            
+        await message.reply_text(f"Successfully saved {len(saved)} super-notes: {', '.join(saved)}")
+        return
+
     note_name, text, data_type, content, buttons = await get_note_type(message)
     if not note_name:
         await message.reply_text("Dude, you need to specify a note name!")

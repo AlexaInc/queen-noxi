@@ -107,17 +107,25 @@ class Buttons(BASE):
     name = Column(UnicodeText, nullable=False)
     url = Column(UnicodeText, nullable=False)
     same_line = Column(Boolean, default=False)
+    color = Column(UnicodeText)
 
-    def __init__(self, chat_id, keyword, name, url, same_line=False):
+    def __init__(self, chat_id, keyword, name, url, same_line=False, color=None):
         self.chat_id = str(chat_id)
         self.keyword = keyword
         self.name = name
         self.url = url
         self.same_line = same_line
+        self.color = color
 
 
 CustomFilters.__table__.create(BASE.metadata.bind, checkfirst=True)
 Buttons.__table__.create(BASE.metadata.bind, checkfirst=True)
+
+try:
+    SESSION.execute("ALTER TABLE cust_filter_urls ADD COLUMN color TEXT")
+    SESSION.commit()
+except:
+    SESSION.rollback()
 
 CUST_FILT_LOCK = threading.RLock()
 BUTTON_LOCK = threading.RLock()
@@ -183,8 +191,8 @@ def add_filter(
         SESSION.add(filt)
         SESSION.commit()
 
-    for b_name, url, same_line in buttons:
-        add_note_button_to_db(chat_id, keyword, b_name, url, same_line)
+    for btn in buttons:
+        add_note_button_to_db(chat_id, keyword, btn.name, btn.url, btn.same_line, getattr(btn, "color", None))
 
 
 def new_add_filter(chat_id, keyword, reply_text, file_type, file_id, buttons):
@@ -231,8 +239,8 @@ def new_add_filter(chat_id, keyword, reply_text, file_type, file_id, buttons):
         SESSION.add(filt)
         SESSION.commit()
 
-    for b_name, url, same_line in buttons:
-        add_note_button_to_db(chat_id, keyword, b_name, url, same_line)
+    for btn in buttons:
+        add_note_button_to_db(chat_id, keyword, btn.name, btn.url, btn.same_line, getattr(btn, "color", None))
 
 
 def remove_filter(chat_id, keyword):
@@ -284,9 +292,9 @@ def get_filter(chat_id, keyword):
         SESSION.close()
 
 
-def add_note_button_to_db(chat_id, keyword, b_name, url, same_line):
+def add_note_button_to_db(chat_id, keyword, b_name, url, same_line, color=None):
     with BUTTON_LOCK:
-        button = Buttons(chat_id, keyword, b_name, url, same_line)
+        button = Buttons(chat_id, keyword, b_name, url, same_line, color)
         SESSION.add(button)
         SESSION.commit()
 

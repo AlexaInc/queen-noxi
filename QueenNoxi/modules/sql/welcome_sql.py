@@ -261,12 +261,14 @@ class WelcomeButtons(BASE):
     name = Column(UnicodeText, nullable=False)
     url = Column(UnicodeText, nullable=False)
     same_line = Column(Boolean, default=False)
+    color = Column(UnicodeText)
 
-    def __init__(self, chat_id, name, url, same_line=False):
+    def __init__(self, chat_id, name, url, same_line=False, color=None):
         self.chat_id = str(chat_id)
         self.name = name
         self.url = url
         self.same_line = same_line
+        self.color = color
 
 
 class GoodbyeButtons(BASE):
@@ -276,12 +278,14 @@ class GoodbyeButtons(BASE):
     name = Column(UnicodeText, nullable=False)
     url = Column(UnicodeText, nullable=False)
     same_line = Column(Boolean, default=False)
+    color = Column(UnicodeText)
 
-    def __init__(self, chat_id, name, url, same_line=False):
+    def __init__(self, chat_id, name, url, same_line=False, color=None):
         self.chat_id = str(chat_id)
         self.name = name
         self.url = url
         self.same_line = same_line
+        self.color = color
 
 
 class WelcomeMute(BASE):
@@ -324,6 +328,13 @@ GoodbyeButtons.__table__.create(BASE.metadata.bind, checkfirst=True)
 WelcomeMute.__table__.create(BASE.metadata.bind, checkfirst=True)
 WelcomeMuteUsers.__table__.create(BASE.metadata.bind, checkfirst=True)
 CleanServiceSetting.__table__.create(BASE.metadata.bind, checkfirst=True)
+
+try:
+    SESSION.execute("ALTER TABLE welcome_urls ADD COLUMN color TEXT")
+    SESSION.execute("ALTER TABLE leave_urls ADD COLUMN color TEXT")
+    SESSION.commit()
+except:
+    SESSION.rollback()
 
 INSERTION_LOCK = threading.RLock()
 WELC_BTN_LOCK = threading.RLock()
@@ -491,8 +502,8 @@ def set_custom_welcome(
             for btn in prev_buttons:
                 SESSION.delete(btn)
 
-            for b_name, url, same_line in buttons:
-                button = WelcomeButtons(chat_id, b_name, url, same_line)
+            for btn in buttons:
+                button = WelcomeButtons(chat_id, btn.name, btn.url, btn.same_line, getattr(btn, "color", None))
                 SESSION.add(button)
 
         SESSION.commit()
@@ -536,8 +547,8 @@ def set_custom_gdbye(chat_id, custom_goodbye, goodbye_type, buttons=None):
             for btn in prev_buttons:
                 SESSION.delete(btn)
 
-            for b_name, url, same_line in buttons:
-                button = GoodbyeButtons(chat_id, b_name, url, same_line)
+            for btn in buttons:
+                button = GoodbyeButtons(chat_id, btn.name, btn.url, btn.same_line, getattr(btn, "color", None))
                 SESSION.add(button)
 
         SESSION.commit()

@@ -40,17 +40,28 @@ def markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int 
         end = ent.offset + offset + ent.length
         ent_text = txt[start:end]
 
-        if ent.type in (enums.MessageEntityType.CODE, enums.MessageEntityType.URL, enums.MessageEntityType.TEXT_LINK):
-            if ent.type == enums.MessageEntityType.URL:
-                if any(match.start(1) <= start and end <= match.end(1) for match in LINK_REGEX.finditer(txt)):
-                    continue
-                else:
-                    res += _selective_escape(txt[prev:start]) + ent_text
-            elif ent.type == enums.MessageEntityType.CODE:
-                res += _selective_escape(txt[prev:start]) + "`" + ent_text + "`"
-            elif ent.type == enums.MessageEntityType.TEXT_LINK:
-                res += _selective_escape(txt[prev:start]) + f"[{ent_text}]({ent.url})"
-            prev = end
+        if ent.type == enums.MessageEntityType.BOLD:
+            res += _selective_escape(txt[prev:start]) + "**" + ent_text + "**"
+        elif ent.type == enums.MessageEntityType.ITALIC:
+            res += _selective_escape(txt[prev:start]) + "__" + ent_text + "__"
+        elif ent.type == enums.MessageEntityType.STRIKETHROUGH:
+            res += _selective_escape(txt[prev:start]) + "~~" + ent_text + "~~"
+        elif ent.type == enums.MessageEntityType.UNDERLINE:
+            res += _selective_escape(txt[prev:start]) + "--" + ent_text + "--"
+        elif ent.type == enums.MessageEntityType.SPOILER:
+            res += _selective_escape(txt[prev:start]) + "||" + ent_text + "||"
+        elif ent.type == enums.MessageEntityType.CUSTOM_EMOJI:
+            res += _selective_escape(txt[prev:start]) + f"[{ent_text}](tg://emoji?id={ent.custom_emoji_id})"
+        elif ent.type == enums.MessageEntityType.CODE:
+            res += _selective_escape(txt[prev:start]) + "`" + ent_text + "`"
+        elif ent.type == enums.MessageEntityType.URL:
+            if any(match.start(1) <= start and end <= match.end(1) for match in LINK_REGEX.finditer(txt)):
+                continue
+            else:
+                res += _selective_escape(txt[prev:start]) + ent_text
+        elif ent.type == enums.MessageEntityType.TEXT_LINK:
+            res += _selective_escape(txt[prev:start]) + f"[{ent_text}]({ent.url})"
+        prev = end
     
     res += _selective_escape(txt[prev:])
     return res

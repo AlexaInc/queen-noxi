@@ -36,17 +36,25 @@ class Buttons(BASE):
     name = Column(UnicodeText, nullable=False)
     url = Column(UnicodeText, nullable=False)
     same_line = Column(Boolean, default=False)
+    color = Column(UnicodeText)
 
-    def __init__(self, chat_id, note_name, name, url, same_line=False):
+    def __init__(self, chat_id, note_name, name, url, same_line=False, color=None):
         self.chat_id = str(chat_id)
         self.note_name = note_name
         self.name = name
         self.url = url
         self.same_line = same_line
+        self.color = color
 
 
 Notes.__table__.create(BASE.metadata.bind, checkfirst=True)
 Buttons.__table__.create(BASE.metadata.bind, checkfirst=True)
+
+try:
+    SESSION.execute("ALTER TABLE note_urls ADD COLUMN color TEXT")
+    SESSION.commit()
+except:
+    SESSION.rollback()
 
 NOTES_INSERTION_LOCK = threading.RLock()
 BUTTONS_INSERTION_LOCK = threading.RLock()
@@ -76,8 +84,8 @@ def add_note_to_db(chat_id, note_name, note_data, msgtype, buttons=None, file=No
         SESSION.add(note)
         SESSION.commit()
 
-    for b_name, url, same_line in buttons:
-        add_note_button_to_db(chat_id, note_name, b_name, url, same_line)
+    for btn in buttons:
+        add_note_button_to_db(chat_id, note_name, btn.name, btn.url, btn.same_line, getattr(btn, "color", None))
 
 
 def get_note(chat_id, note_name):
@@ -131,9 +139,9 @@ def get_all_chat_notes(chat_id):
         SESSION.close()
 
 
-def add_note_button_to_db(chat_id, note_name, b_name, url, same_line):
+def add_note_button_to_db(chat_id, note_name, b_name, url, same_line, color=None):
     with BUTTONS_INSERTION_LOCK:
-        button = Buttons(chat_id, note_name, b_name, url, same_line)
+        button = Buttons(chat_id, note_name, b_name, url, same_line, color)
         SESSION.add(button)
         SESSION.commit()
 

@@ -208,13 +208,15 @@ async def reply_filter(client: Client, message: Message):
             keyboard = InlineKeyboardMarkup(build_keyboard(buttons)) if buttons else None
             
             res, flags = await format_message(filt.reply_text, message.from_user, message.chat)
+            parse_mode = enums.ParseMode.HTML
 
             if filt.file_type in (Types.TEXT, Types.BUTTON_TEXT):
-                flags.pop("has_spoiler", None) # Fix TypeError: Message.reply() got an unexpected keyword argument 'has_spoiler'
+                flags.pop("has_spoiler", None)
                 await message.reply_text(
                     res,
                     reply_markup=keyboard,
                     reply_to_message_id=message.id,
+                    parse_mode=parse_mode,
                     **flags
                 )
             else:
@@ -224,6 +226,7 @@ async def reply_filter(client: Client, message: Message):
                     caption=res,
                     reply_markup=keyboard,
                     reply_to_message_id=message.id,
+                    parse_mode=parse_mode,
                     **flags
                 )
             break

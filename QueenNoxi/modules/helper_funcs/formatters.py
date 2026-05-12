@@ -3,23 +3,24 @@ from typing import Optional, Dict, Tuple
 from pyrogram import enums
 from pyrogram.types import Message, User, Chat
 from QueenNoxi import BOT_USERNAME
-from QueenNoxi.modules.helper_funcs.string_handling import escape_markdown, escape_invalid_curly_brackets
+from QueenNoxi.modules.helper_funcs.string_handling import html as html_handler, escape_invalid_curly_brackets
+import html
 
 async def format_message(text: str, user: User, chat: Chat) -> Tuple[str, Dict]:
     if not text:
         return "", {}
 
-    first = escape_markdown(user.first_name)
-    last = escape_markdown(user.last_name or user.first_name)
-    fullname = escape_markdown(f"{user.first_name} {user.last_name}" if user.last_name else user.first_name)
+    first = html.escape(user.first_name)
+    last = html.escape(user.last_name or user.first_name)
+    fullname = html.escape(f"{user.first_name} {user.last_name}" if user.last_name else user.first_name)
     
-    # Explicitly use markdown link for mention/username to prevent raw HTML issues
-    mention_link = f"[{first}](tg://user?id={user.id})"
+    # Explicitly use HTML tag for mention/username to prevent raw markup issues
+    mention_link = f'<a href="tg://user?id={user.id}">{first}</a>'
     
     username = f"@{user.username}" if user.username else mention_link
     mention = mention_link
     id = user.id
-    chatname = escape_markdown(chat.title if chat and chat.type != enums.ChatType.PRIVATE else user.first_name)
+    chatname = html.escape(chat.title if chat and chat.type != enums.ChatType.PRIVATE else user.first_name)
     
     rules_link = f"t.me/{BOT_USERNAME}?start={chat.id}" if chat and chat.type != enums.ChatType.PRIVATE else f"t.me/{BOT_USERNAME}"
     rules = f"[Rules]({rules_link})"

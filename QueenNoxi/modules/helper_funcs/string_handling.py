@@ -29,19 +29,23 @@ def _selective_escape(to_parse: str) -> str:
             offset += 1
     return to_parse
 
-def markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int = 0) -> str:
+from pyrogram.parser.html import HTML
+import html
+
+def content_to_html(txt: str, entities: List[MessageEntity] = None) -> str:
     if not entities:
-        return _selective_escape(txt)
+        return html.escape(str(txt))
     
-    # Use Pyrogram's native markdown unparser.
-    # It handles UTF-16 surrogate pairs and entity alignment perfectly.
     try:
-        # We need to ensure we don't pass a Message object instead of a string
+        # User Pyrogram's native HTML unparser for 100% accuracy with all entity types
         text_str = str(txt)
-        return Markdown(None).unparse(text_str, entities)
+        return HTML(None).unparse(text_str, entities)
     except Exception:
-        # Fallback to selective escape if unparse fails for any reason
-        return _selective_escape(txt)
+        return html.escape(str(txt))
+
+# Wrapper for backward compatibility (renamed internal logic)
+def markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int = 0) -> str:
+    return content_to_html(txt, entities)
 
 class Button:
     def __init__(self, name, url, same_line=False, color=None):

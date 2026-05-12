@@ -44,12 +44,17 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
                 sql.rm_note(chat_id, notename)
                 return
         
-        res, flags = await format_message(note.value, message.from_user, message.chat)
+        # Determine the user to use for formatting ({first}, {mention}, etc.)
+        # In a callback (button click), it's the clicker (query.from_user).
+        # Otherwise, it's the message sender.
+        sender = query.from_user if query else message.from_user
+        
+        res, flags = await format_message(note.value, sender, message.chat)
         text = res
 
         buttons = sql.get_buttons(chat_id, notename)
         keyb = []
-        parse_mode = enums.ParseMode.MARKDOWN
+        parse_mode = enums.ParseMode.HTML
         
         if no_format:
             parse_mode = None

@@ -152,8 +152,26 @@ pat_ani = ["Patting...", "Pat pat... ✨", "Good job! 💖", "✋✨", "😊"]
 hug_ani = ["Hugging...", "HUG! 🤗", "Warm hugs! ❤️", "🫂❤️", "✨"]
 kiss_ani = ["Kissing...", "KISS! 💋", "Muah! 💘", "😘💋", "🔥"]
 
-ban_ani = ["Banning...", "Preparing the hammer... 🔨", "Aiming at target... 🎯", "Swing! 🚀", "BANNED! 💀", "❌"]
-mute_ani = ["Muting...", "Silencing the noise... 🤫", "Locking the mouth! 🔒", "MUTED! 🤐", "✅"]
+ban_ani = [
+    "🔨 Initializing BanHammer...", 
+    "🔍 Locating target user...", 
+    "⚖️ Applying punishment protocol...", 
+    "⚡ Charging strike...", 
+    "🎯 Locking on...", 
+    "🚀 Swing! 0.5s to impact...", 
+    "💥 KABOOM! 💥", 
+    "💀 USER PERMANENTLY BANNED 💀", 
+    "❌"
+]
+mute_ani = [
+    "🤫 Initiating Silence protocol...", 
+    "🤐 Sealing the lips...", 
+    "🔒 Applying magic lock...", 
+    "🗝️ Key turned!", 
+    "🤫 Shhh... no more noise.", 
+    "🤐 MUTED! 🤐", 
+    "✅"
+]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

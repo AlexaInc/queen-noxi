@@ -318,6 +318,7 @@ __help__ = """
 
 *Admins only:*
  ❍ /ban <userhandle>: Bans a user. (via handle, or reply)
+ ❍ /aban <userhandle>: Animated ban a user.
  ❍ /sban <userhandle>: Silently ban a user.
  ❍ /tban <userhandle> x(m/h/d): Bans a user for `x` time.
  ❍ /unban <userhandle>: Unbans a user.

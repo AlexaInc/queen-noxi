@@ -231,6 +231,7 @@ __mod_name__ = "Mute"
 __help__ = """
 *Admins only:*
  ❍ /mute <userhandle>: Silences a user.
+ ❍ /amute <userhandle>: Animated mute a user.
  ❍ /tmute <userhandle> x(m/h/d): Mutes a user for x time.
  ❍ /unmute <userhandle>: Unmutes a user.
  ❍ /dmute <userhandle>: Silences a user and deletes the command.

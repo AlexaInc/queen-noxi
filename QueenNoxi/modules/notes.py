@@ -50,6 +50,8 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
         sender = query.from_user if query else message.from_user
         
         res, flags = await format_message(note.value, sender, message.chat)
+        if not res:
+            return
         text = res
 
         buttons = sql.get_buttons(chat_id, notename)

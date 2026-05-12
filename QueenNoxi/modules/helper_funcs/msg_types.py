@@ -110,9 +110,24 @@ async def get_welcome_type(msg: Message):
         entities = reply.entities or reply.caption_entities
         text, buttons = button_markdown_parser(msgtext, entities=entities)
     else:
+        # Non-reply case: slice command and adjust entities
         args = msg.text.split(None, 1)
         if len(args) >= 2:
-            text, buttons = button_markdown_parser(args[1], entities=msg.entities)
+            content_text = args[1]
+            # Offset = command length + 1 (space)
+            base_offset = msg.text.find(content_text)
+            
+            # Correct entities by shifting offset
+            adjusted_entities = []
+            if msg.entities:
+                for ent in msg.entities:
+                    if ent.offset >= base_offset:
+                        import copy
+                        new_ent = copy.copy(ent)
+                        new_ent.offset -= base_offset
+                        adjusted_entities.append(new_ent)
+            
+            text, buttons = button_markdown_parser(content_text, entities=adjusted_entities)
     
     if not data_type:
         data_type = Types.BUTTON_TEXT if buttons else Types.TEXT if text else None
@@ -127,7 +142,18 @@ async def get_filter_type(msg: Message):
 
     if not msg.reply_to_message and msg.text and len(msg.text.split()) >= 3:
         raw_text = msg.text.split(None, 2)[2]
-        text, buttons = button_markdown_parser(raw_text, entities=msg.entities)
+        base_offset = msg.text.find(raw_text)
+        
+        adjusted_entities = []
+        if msg.entities:
+            for ent in msg.entities:
+                if ent.offset >= base_offset:
+                    import copy
+                    new_ent = copy.copy(ent)
+                    new_ent.offset -= base_offset
+                    adjusted_entities.append(new_ent)
+                    
+        text, buttons = button_markdown_parser(raw_text, entities=adjusted_entities)
         data_type = Types.BUTTON_TEXT if buttons else Types.TEXT
 
     elif msg.reply_to_message:

@@ -17,6 +17,8 @@ MATCH_MD = re.compile(
 LINK_REGEX = re.compile(r"(?<!\\)\[.+?\]\((.*?)\)")
 BTN_URL_REGEX = re.compile(r"(\[([^\[]+?)\]\(buttonurl(?:#([^:]+))?://(/{0,2})(.+?)(:same)?\))")
 
+from pyrogram.parser.markdown import Markdown
+
 def _selective_escape(to_parse: str) -> str:
     offset = 0
     # Escape markdown-sensitive characters that aren't part of a valid formatting block
@@ -27,74 +29,19 @@ def _selective_escape(to_parse: str) -> str:
             offset += 1
     return to_parse
 
-def utf16_to_char(text: str, utf16_off: int) -> int:
-    """Converts a UTF-16 offset into a Python character index."""
-    if not text:
-        return 0
-    char_idx = 0
-    utf16_idx = 0
-    while utf16_idx < utf16_off and char_idx < len(text):
-        # Surrogate pairs take 2 UTF-16 units but are 1 character in Python
-        if ord(text[char_idx]) > 0xFFFF:
-            utf16_idx += 2
-        else:
-            utf16_idx += 1
-        char_idx += 1
-    return char_idx
-
 def markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int = 0) -> str:
     if not entities:
         return _selective_escape(txt)
     
-    # Pre-calculate char offsets because ent.offset is in UTF-16 (Bot API standard)
-    # but Python slices use char indices.
-    sorted_entities = sorted(entities, key=lambda e: e.offset)
-    
-    prev = 0
-    res = ""
-    for ent in sorted_entities:
-        start_char = utf16_to_char(txt, ent.offset)
-        end_char = utf16_to_char(txt, ent.offset + ent.length)
-        
-        # Check clipping/alignment
-        if start_char < 0:
-            continue
-            
-        ent_text = txt[start_char:end_char]
-
-        if ent.type == enums.MessageEntityType.BOLD:
-            res += _selective_escape(txt[prev:start_char]) + "**" + ent_text + "**"
-        elif ent.type == enums.MessageEntityType.ITALIC:
-            res += _selective_escape(txt[prev:start_char]) + "__" + ent_text + "__"
-        elif ent.type == enums.MessageEntityType.STRIKETHROUGH:
-            res += _selective_escape(txt[prev:start_char]) + "~~" + ent_text + "~~"
-        elif ent.type == enums.MessageEntityType.UNDERLINE:
-            res += _selective_escape(txt[prev:start_char]) + "--" + ent_text + "--"
-        elif ent.type == enums.MessageEntityType.SPOILER:
-            res += _selective_escape(txt[prev:start_char]) + "||" + ent_text + "||"
-        elif ent.type == enums.MessageEntityType.CUSTOM_EMOJI:
-            res += _selective_escape(txt[prev:start_char]) + f"[{ent_text}](tg://emoji?id={ent.custom_emoji_id})"
-        elif ent.type == enums.MessageEntityType.CODE:
-            res += _selective_escape(txt[prev:start_char]) + "`" + ent_text + "`"
-        elif ent.type == enums.MessageEntityType.PRE:
-            res += _selective_escape(txt[prev:start_char]) + "```" + (ent.language or "") + "\n" + ent_text + "```"
-        elif ent.type == enums.MessageEntityType.URL:
-            if any(match.start(1) <= start_char and end_char <= match.end(1) for match in LINK_REGEX.finditer(txt)):
-                continue
-            else:
-                res += _selective_escape(txt[prev:start_char]) + ent_text
-        elif ent.type == enums.MessageEntityType.TEXT_LINK:
-            res += _selective_escape(txt[prev:start_char]) + f"[{ent_text}]({ent.url})"
-        elif ent.type == enums.MessageEntityType.MENTION:
-            res += _selective_escape(txt[prev:start_char]) + ent_text
-        elif ent.type == enums.MessageEntityType.TEXT_MENTION:
-            res += _selective_escape(txt[prev:start_char]) + f"[{ent_text}](tg://user?id={ent.user.id})"
-        else:
-            res += _selective_escape(txt[prev:start_char]) + ent_text
-        prev = end_char
-    
-    res += _selective_escape(txt[prev:])
-    return res
+    # Use Pyrogram's native markdown unparser.
+    # It handles UTF-16 surrogate pairs and entity alignment perfectly.
+    try:
+        # We need to ensure we don't pass a Message object instead of a string
+        text_str = str(txt)
+        return Markdown(None).unparse(text_str, entities)
+    except Exception:
+        # Fallback to selective escape if unparse fails for any reason
+        return _selective_escape(txt)
 
 class Button:
     def __init__(self, name, url, same_line=False, color=None):

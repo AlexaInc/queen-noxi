@@ -48,7 +48,7 @@ async def extract_user_and_text(
         pass
     elif len(args) >= 1 and args[0][0] == "@":
         user_name = args[0]
-        user_id = get_user_id(user_name)
+        user_id = await get_user_id(user_name)
         if not user_id:
             try:
                 user = await pbot.get_users(user_name)

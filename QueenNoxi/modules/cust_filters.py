@@ -186,12 +186,11 @@ async def list_handlers(client: Client, message: Message):
         await message.reply_text("No filters saved in this chat!")
         return
 
-    import html
-    filter_list = f"<b>Filters in {html.escape(message.chat.title)}:</b>\n"
+    filter_list = f"**Filters in {html.escape(message.chat.title)}:**\n"
     for keyword in all_handlers:
-        filter_list += f" • <code>{keyword}</code>\n"
+        filter_list += f" • `{keyword}`\n"
 
-    await message.reply_text(filter_list, parse_mode=enums.ParseMode.HTML)
+    await message.reply_text(filter_list)
 
 @pbot.on_message(filters.text & filters.group, group=HANDLER_GROUP)
 async def reply_filter(client: Client, message: Message):

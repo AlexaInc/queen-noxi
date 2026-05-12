@@ -22,8 +22,8 @@ async def format_message(text: str, user: User, chat: Chat) -> Tuple[str, Dict]:
     id = user.id
     chatname = html.escape(chat.title if chat and chat.type != enums.ChatType.PRIVATE else user.first_name)
     
-    rules_link = f"https://t.me/{BOT_USERNAME}?start={chat.id}" if chat and chat.type != enums.ChatType.PRIVATE else f"https://t.me/{BOT_USERNAME}"
-    rules = f'<a href="{rules_link}">Rules</a>'
+    rules_link = f"t.me/{BOT_USERNAME}?start={chat.id}" if chat and chat.type != enums.ChatType.PRIVATE else f"t.me/{BOT_USERNAME}"
+    rules = f"[Rules]({rules_link})"
 
     VALID_PLACEHOLDERS = [
         "first", "last", "fullname", "username", "mention", "id", "chatname", "rules"

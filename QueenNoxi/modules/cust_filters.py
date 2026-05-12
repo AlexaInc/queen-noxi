@@ -76,12 +76,18 @@ async def add_filter(client: Client, message: Message):
                 t, b = button_markdown_parser(html_text, is_html=True)
                 
                 # Save tags as NOTES
-                note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
+                current_type = replied_type or (Types.BUTTON_TEXT if b else Types.TEXT)
+                note_sql.add_note_to_db(chat_id, keyword, t, current_type, file=m_file, buttons=b)
                 saved_notes.append(keyword)
 
                 # Point primary trigger to first tag's content
                 if i == 0 and trigger:
-                    sql.add_filter(chat_id, trigger, t, buttons=b)
+                    sql.add_filter(
+                        chat_id, trigger, t, 
+                        is_sticker=m_sticker, is_document=m_document, is_image=m_image,
+                        is_audio=m_audio, is_voice=m_voice, is_video=m_video,
+                        buttons=b
+                    )
                     if trigger != keyword:
                         saved_notes.append(f"{trigger} (filter)")
             

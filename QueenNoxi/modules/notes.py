@@ -167,6 +167,29 @@ async def save(client: Client, message: Message):
         
         if matches:
             from QueenNoxi.modules.helper_funcs.string_handling import content_to_html, button_markdown_parser
+            
+            # Extract media info to apply to ALL pages
+            replied_type = None
+            replied_file = None
+            if replied.sticker:
+                replied_type = Types.STICKER
+                replied_file = replied.sticker.file_id
+            elif replied.document:
+                replied_type = Types.DOCUMENT
+                replied_file = replied.document.file_id
+            elif replied.photo:
+                replied_type = Types.PHOTO
+                replied_file = replied.photo.file_id
+            elif replied.audio:
+                replied_type = Types.AUDIO
+                replied_file = replied.audio.file_id
+            elif replied.voice:
+                replied_type = Types.VOICE
+                replied_file = replied.voice.file_id
+            elif replied.video:
+                replied_type = Types.VIDEO
+                replied_file = replied.video.file_id
+            
             saved = []
             for i, match in enumerate(matches):
                 name = match.group(1).lower()
@@ -200,11 +223,14 @@ async def save(client: Client, message: Message):
                 # Parse buttons from the HTML - use is_html=True to prevent double-escaping
                 t, b = button_markdown_parser(html_text, is_html=True)
                 
-                sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
+                # Apply media if present, otherwise default to text
+                current_type = replied_type or (Types.BUTTON_TEXT if b else Types.TEXT)
+                
+                sql.add_note_to_db(chat_id, name, t, current_type, file=replied_file, buttons=b)
                 saved.append(name)
                 
                 if i == 0 and note_name:
-                    sql.add_note_to_db(chat_id, note_name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
+                    sql.add_note_to_db(chat_id, note_name, t, current_type, file=replied_file, buttons=b)
                     if note_name != name:
                         saved.append(note_name)
             

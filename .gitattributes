@@ -1,0 +1,7 @@
+*.ttf filter=lfs diff=lfs merge=lfs -text
+*.otf filter=lfs diff=lfs merge=lfs -text
+*.gif filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
+MukeshRobot/brain/data/brain.json filter=lfs diff=lfs merge=lfs -text
+MukeshRobot/brain/data/phonetic_map.json filter=lfs diff=lfs merge=lfs -text

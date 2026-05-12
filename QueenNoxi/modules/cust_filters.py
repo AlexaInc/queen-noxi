@@ -40,21 +40,36 @@ async def add_filter(client: Client, message: Message):
         trigger = args[0].lower() if args else None
         
         # Super-Filter Parsing
+        from pyrogram.parser.utils import add_surrogates
+        surrogated_text = add_surrogates(content_text)
+        
         super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
-        
-        from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
-        full_markdown = markdown_parser(content_text, content_entities)
-        
-        matches = list(re.finditer(super_filt_pattern, full_markdown, re.DOTALL))
+        matches = list(re.finditer(super_filt_pattern, surrogated_text, re.DOTALL))
         
         if matches:
+            from QueenNoxi.modules.helper_funcs.string_handling import content_to_html, button_markdown_parser
             import QueenNoxi.modules.sql.notes_sql as note_sql
             saved_notes = []
             for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
-                inner_markdown = match.group(2).strip()
+                inner_text = match.group(2).strip("\n")
                 
-                t, b = button_markdown_parser(inner_markdown)
+                raw_inner = match.group(2)
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
+                
+                abs_start = match.start(2) + lead_strip
+                abs_end   = match.end(2)
+                
+                segment_entities = []
+                for ent in content_entities:
+                    if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
+                        import copy
+                        new_ent = copy.copy(ent)
+                        new_ent.offset -= abs_start
+                        segment_entities.append(new_ent)
+                
+                html_text = content_to_html(inner_text, segment_entities)
+                t, b = button_markdown_parser(html_text)
                 
                 # Save tags as NOTES
                 note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
@@ -101,18 +116,36 @@ async def add_filter(client: Client, message: Message):
     
     first_space = raw_text.find(" ")
     if first_space != -1:
-        from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
-        full_markdown = markdown_parser(raw_text, entities)
-        matches = list(re.finditer(super_filt_pattern, full_markdown, re.DOTALL))
+        from pyrogram.parser.utils import add_surrogates
+        surrogated_text = add_surrogates(raw_text)
+        
+        super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        matches = list(re.finditer(super_filt_pattern, surrogated_text, re.DOTALL))
         
         if matches:
+            from QueenNoxi.modules.helper_funcs.string_handling import content_to_html, button_markdown_parser
             import QueenNoxi.modules.sql.notes_sql as note_sql
             saved_notes = []
             for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
-                inner_markdown = match.group(2).strip()
+                inner_text = match.group(2).strip("\n")
                 
-                t, b = button_markdown_parser(inner_markdown)
+                raw_inner = match.group(2)
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
+                
+                abs_start = match.start(2) + lead_strip
+                abs_end   = match.end(2)
+                
+                segment_entities = []
+                for ent in entities:
+                    if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
+                        import copy
+                        new_ent = copy.copy(ent)
+                        new_ent.offset -= abs_start
+                        segment_entities.append(new_ent)
+                
+                html_text = content_to_html(inner_text, segment_entities)
+                t, b = button_markdown_parser(html_text)
                 
                 # Save tags as NOTES
                 note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)

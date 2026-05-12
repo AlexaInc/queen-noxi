@@ -154,23 +154,41 @@ async def save(client: Client, message: Message):
         note_name = args[0].lower() if args else None
         
         # Check for tags in replied message
-        # Note name comes from the command args
+        from pyrogram.parser.utils import add_surrogates
+        surrogated_text = add_surrogates(content_text)
+        
+        import re
         super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
-        
-        # Convert the ENTIRE replied message to markdown first
-        from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
-        full_markdown = markdown_parser(content_text, content_entities)
-        
-        matches = list(re.finditer(super_note_pattern, full_markdown, re.DOTALL))
+        matches = list(re.finditer(super_note_pattern, surrogated_text, re.DOTALL))
         
         if matches:
+            from QueenNoxi.modules.helper_funcs.string_handling import content_to_html, button_markdown_parser
             saved = []
             for i, match in enumerate(matches):
                 name = match.group(1).lower()
-                inner_markdown = match.group(2).strip()
+                inner_text = match.group(2).strip("\n")
                 
-                # Parse buttons from the already-markdownified inner text
-                t, b = button_markdown_parser(inner_markdown)
+                # Calculate relative offset within surrogated text
+                # We strip leading newlines from inner_text, so we must adjust the start
+                raw_inner = match.group(2)
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
+                
+                abs_start = match.start(2) + lead_strip
+                abs_end   = match.end(2)
+                
+                segment_entities = []
+                for ent in content_entities:
+                    if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
+                        import copy
+                        new_ent = copy.copy(ent)
+                        new_ent.offset -= abs_start
+                        segment_entities.append(new_ent)
+                
+                # Convert this specific segment to HTML
+                html_text = content_to_html(inner_text, segment_entities)
+                
+                # Parse buttons from the HTML (button_markdown_parser handles HTML markers too)
+                t, b = button_markdown_parser(html_text)
                 
                 sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
                 saved.append(name)
@@ -211,27 +229,37 @@ async def save(client: Client, message: Message):
         return
 
     # Non-reply case (legacy support for /save name content)
+    from pyrogram.parser.utils import add_surrogates
+    surrogated_text = add_surrogates(raw_text)
+    
+    import re
     super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
-    
-    first_space = raw_text.find(" ")
-    if first_space == -1:
-        await message.reply_text("Specify a note name or reply to a message!")
-        return
-    
-    content_to_parse = raw_text[first_space+1:]
-    # Convert the whole command text to markdown first
-    from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
-    full_markdown = markdown_parser(raw_text, entities)
-    
-    matches = list(re.finditer(super_note_pattern, full_markdown, re.DOTALL))
+    matches = list(re.finditer(super_note_pattern, surrogated_text, re.DOTALL))
 
     if matches:
+        from QueenNoxi.modules.helper_funcs.string_handling import content_to_html, button_markdown_parser
         saved = []
         for i, match in enumerate(matches):
             name = match.group(1).lower()
-            inner_markdown = match.group(2).strip()
+            inner_text = match.group(2).strip("\n")
             
-            t, b = button_markdown_parser(inner_markdown)
+            raw_inner = match.group(2)
+            lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
+            
+            # Since we matched on surrogated_text, these indices match Telegram offsets perfectly
+            abs_start = match.start(2) + lead_strip
+            abs_end   = match.end(2)
+            
+            segment_entities = []
+            for ent in entities:
+                if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
+                    import copy
+                    new_ent = copy.copy(ent)
+                    new_ent.offset -= abs_start
+                    segment_entities.append(new_ent)
+            
+            html_text = content_to_html(inner_text, segment_entities)
+            t, b = button_markdown_parser(html_text)
             
             sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
             saved.append(name)

@@ -12,12 +12,12 @@ BIGBALL = "https://i.gifer.com/8ZUg.gif"
 LANG = "https://telegra.ph/file/423414459345bf18310f5.gif"
 CUTIE = "https://64.media.tumblr.com/d701f53eb5681e87a957a547980371d2/tumblr_nbjmdrQyje1qa94xto1_500.gif"
 PUSSY = "https://nekos.best/api/v2/poke/773e1d53-bb7c-410c-8dfd-e16da3fc7344.gif"
-SEX = "https://nekos.best/api/v2/kiss/30435bec-1eb5-4018-b4dc-685731298f13.gif"
-LUST = "https://nekos.best/api/v2/smug/49b2dbc3-58f0-4485-be6c-38028ac4eaab.gif"
-VIRGIN = "https://nekos.best/api/v2/blush/9c327c6b-1f63-4166-9c31-8e769e135df0.gif"
-ASS = "https://nekos.best/api/v2/smug/2cbc8e3c-3d1e-45ab-8520-bad609a6c6ce.gif"
-THIGHS = "https://nekos.best/api/v2/bite/973d599a-0312-4eda-a523-903a8ac3c519.gif"
-WAIFU = "https://nekos.best/api/v2/smile/d2fb16cf-f2f7-4225-96ea-0dc54239af1f.gif"
+SEX = "https://c.tenor.com/7u92I92oPwgAAAAC/tenor.gif"
+LUST = "https://c.tenor.com/54MQB5tN6kwAAAAd/tenor.gif"
+VIRGIN = "https://c.tenor.com/L5okNZ6GO40AAAAC/tenor.gif"
+ASS = "https://c.tenor.com/qMnrmSdE_IYAAAAC/tenor.gif"
+THIGHS = "https://c.tenor.com/8RNv7Ip6GlAAAAAd/tenor.gif"
+WAIFU = "https://i.giphy.com/0xwUkYOI3D60r9bz2o.webp"
 
 
 @asst.on(events.NewMessage(pattern="/horny ?(.*)"))

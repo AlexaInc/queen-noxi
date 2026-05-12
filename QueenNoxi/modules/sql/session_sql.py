@@ -30,3 +30,10 @@ def save_session(bot_id, session_string):
             curr = SessionStore(bot_id, session_string)
             SESSION.add(curr)
         SESSION.commit()
+
+def delete_session(bot_id):
+    with SESSION_LOCK:
+        curr = SESSION.query(SessionStore).get(str(bot_id))
+        if curr:
+            SESSION.delete(curr)
+            SESSION.commit()

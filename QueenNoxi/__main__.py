@@ -8,7 +8,7 @@ from sys import argv
 from pyrogram import filters, enums, idle
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
 from pyrogram import __version__ as pyrover
-from pyrogram.errors import FloodWait, RPCError
+from pyrogram.errors import FloodWait, RPCError, AuthKeyDuplicated, Unauthorized
 
 from telethon import __version__ as tlhver
 from telethon.errors import FloodWaitError as TlFloodWait
@@ -32,7 +32,7 @@ from QueenNoxi.modules import ALL_MODULES
 from QueenNoxi.modules.no_sql.users_db import get_served_users
 from QueenNoxi.modules.no_sql.chats_db import get_served_chats
 from QueenNoxi.modules.helper_funcs.misc import paginate_modules
-from QueenNoxi.modules.sql.session_sql import save_session
+from QueenNoxi.modules.sql.session_sql import save_session, delete_session
 
 # SUPPORT_CHAT_URL is now centralized in QueenNoxi.__init__
 
@@ -430,6 +430,33 @@ async def main():
     except FloodWait as e:
         LOGGER.error(f"[Pyrogram] CRITICAL FloodWait on start: {e.value}s. Sleeping...")
         await asyncio.sleep(e.value)
+    except (AuthKeyDuplicated, Unauthorized) as e:
+        LOGGER.error(f"[Pyrogram] Session invalidated ({e}). Clearing and falling back to Bot Token...")
+        delete_session(BOT_ID)
+        
+        # Re-initialize as in-memory bot client
+        from pyrogram import Client as PyClient
+        from QueenNoxi import API_ID, API_HASH, TOKEN, WORKERS
+        new_pbot = PyClient(
+            "QueenNoxi_Fallback",
+            api_id=API_ID,
+            api_hash=API_HASH,
+            bot_token=TOKEN,
+            in_memory=True,
+            workers=WORKERS,
+            ipv6=False
+        )
+        # Monkey patch the global pbot 
+        import QueenNoxi
+        QueenNoxi.pbot = new_pbot
+        
+        # Attempt to start the new client
+        try:
+            await new_pbot.start()
+            LOGGER.info("[Pyrogram] Fallback client started successfully.")
+        except Exception as fe:
+            LOGGER.error(f"[Pyrogram] Fallback failed: {fe}")
+
     except Exception as e:
         LOGGER.error(f"[Pyrogram] Failed to start client: {e}")
 

@@ -39,8 +39,8 @@ async def add_filter(client: Client, message: Message):
         args = message.command[1:]
         trigger = args[0].lower() if args else None
         
-        # Super-Filter Parsing
-        super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        # Super-Filter Parsing (min 2 chars to avoid <b> tag collisions)
+        super_filt_pattern = r"<([a-zA-Z0-9_-]{2,})>(.*?)</\1>"
         
         from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
         full_markdown = markdown_parser(content_text, content_entities)
@@ -97,7 +97,7 @@ async def add_filter(client: Client, message: Message):
         return
 
     # Non-reply case
-    super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+    super_filt_pattern = r"<([a-zA-Z0-9_-]{2,})>(.*?)</\1>"
     
     first_space = raw_text.find(" ")
     if first_space != -1:

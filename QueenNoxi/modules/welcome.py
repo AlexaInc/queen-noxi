@@ -128,11 +128,13 @@ async def new_member(client: Client, message: Message):
                 res, flags = await format_message(random.choice(sql.DEFAULT_WELCOME_MESSAGES), new_mem, chat)
 
             if welc_type in (Types.TEXT, Types.BUTTON_TEXT):
+                # Text replies don't support has_spoiler
+                text_flags = {k: v for k, v in flags.items() if k != "has_spoiler"}
                 sent = await message.reply_text(
                     res,
                     reply_markup=keyboard,
                     reply_to_message_id=message.id if not sql.clean_service(chat.id) else None,
-                    **flags
+                    **text_flags
                 )
             else:
                 # Media DOES NOT support disable_web_page_preview
@@ -245,11 +247,13 @@ async def set_welcome_msg(client: Client, message: Message):
                     main_welcome_text = t
                     main_welcome_buttons = b
             
-            await message.reply_text(f"Detected and saved {len(saved_notes)} notes from tags: {', '.join(saved_notes)}")
-            
             # Set the first tag as welcome
             sql.set_custom_welcome(chat.id, None, main_welcome_text, Types.BUTTON_TEXT if main_welcome_buttons else Types.TEXT, main_welcome_buttons)
-            await message.reply_text("Successfully set the first tag as your welcome message!")
+            await message.reply_text(
+                f"Successfully set your welcome message!\n"
+                f"Detected and saved {len(saved_notes)} pages as notes: {', '.join(saved_notes)}"
+            )
+            return
             return
     
     text, data_type, content, buttons = await get_welcome_type(message)

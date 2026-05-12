@@ -3,7 +3,7 @@ import re
 import time
 import asyncio
 from platform import python_version as y
-from sys import argv
+from sys import argv, exit as sys_exit
 
 from pyrogram import filters, enums, idle
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
@@ -431,31 +431,9 @@ async def main():
         LOGGER.error(f"[Pyrogram] CRITICAL FloodWait on start: {e.value}s. Sleeping...")
         await asyncio.sleep(e.value)
     except (AuthKeyDuplicated, Unauthorized) as e:
-        LOGGER.error(f"[Pyrogram] Session invalidated ({e}). Clearing and falling back to Bot Token...")
+        LOGGER.error(f"[Pyrogram] Session invalidated ({e}). Clearing and RESTARTING bot...")
         delete_session(BOT_ID)
-        
-        # Re-initialize as in-memory bot client
-        from pyrogram import Client as PyClient
-        from QueenNoxi import API_ID, API_HASH, TOKEN, WORKERS
-        new_pbot = PyClient(
-            "QueenNoxi_Fallback",
-            api_id=API_ID,
-            api_hash=API_HASH,
-            bot_token=TOKEN,
-            in_memory=True,
-            workers=WORKERS,
-            ipv6=False
-        )
-        # Monkey patch the global pbot 
-        import QueenNoxi
-        QueenNoxi.pbot = new_pbot
-        
-        # Attempt to start the new client
-        try:
-            await new_pbot.start()
-            LOGGER.info("[Pyrogram] Fallback client started successfully.")
-        except Exception as fe:
-            LOGGER.error(f"[Pyrogram] Fallback failed: {fe}")
+        sys_exit(1) # Exit to trigger a container restart
 
     except Exception as e:
         LOGGER.error(f"[Pyrogram] Failed to start client: {e}")

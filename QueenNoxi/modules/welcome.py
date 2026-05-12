@@ -114,14 +114,26 @@ async def new_member(client: Client, message: Message):
              await message.reply_text("One of my creators joined!")
              continue
 
-        if should_welc:
-            buttons = sql.get_welc_buttons(chat.id)
-            keyb = build_keyboard(buttons)
-            keyboard = InlineKeyboardMarkup(keyb)
-
             if cust_welcome:
                 if cust_welcome == sql.DEFAULT_WELCOME:
                     cust_welcome = random.choice(sql.DEFAULT_WELCOME_MESSAGES)
+                
+                # Robust notename lookup for pagination
+                _page_notename = ""
+                if buttons and any(getattr(b, "url", "") in ("btn_next", "btn_back", "btn_home") for b in buttons):
+                    import QueenNoxi.modules.sql.notes_sql as _nsql
+                    _all_notes = _nsql.get_all_chat_notes(chat.id)
+                    import re as _re
+                    def _strip_html(data):
+                        return _re.sub(r"<.*?>", "", str(data)).strip()
+                    _content_raw = _strip_html(cust_welcome)
+                    for _n in _all_notes:
+                        if _strip_html(_n.value) == _content_raw:
+                            _page_notename = _n.name.lower()
+                            break
+                
+                keyb = build_keyboard(buttons, notename=_page_notename)
+                keyboard = InlineKeyboardMarkup(keyb)
                 
                 res, flags = await format_message(cust_welcome, new_mem, chat)
             else:
@@ -184,7 +196,22 @@ async def left_member(client: Client, message: Message):
     should_goodbye, cust_goodbye, leave_type = sql.get_gdbye_pref(chat.id)
     if should_goodbye:
         buttons = sql.get_gdbye_buttons(chat.id)
-        keyb = build_keyboard(buttons)
+        
+        # Robust notename lookup for pagination
+        _page_notename = ""
+        if buttons and any(getattr(b, "url", "") in ("btn_next", "btn_back", "btn_home") for b in buttons):
+            import QueenNoxi.modules.sql.notes_sql as _nsql
+            _all_notes = _nsql.get_all_chat_notes(chat.id)
+            import re as _re
+            def _strip_html(data):
+                return _re.sub(r"<.*?>", "", str(data)).strip()
+            _content_raw = _strip_html(cust_goodbye)
+            for _n in _all_notes:
+                if _strip_html(_n.value) == _content_raw:
+                    _page_notename = _n.name.lower()
+                    break
+        
+        keyb = build_keyboard(buttons, notename=_page_notename)
         keyboard = InlineKeyboardMarkup(keyb) if keyb else None
         
         # Format the message (supports all placeholders and tags)

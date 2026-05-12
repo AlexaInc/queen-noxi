@@ -37,7 +37,10 @@ from pyrogram.parser.html import HTML
 from pyrogram.parser import utils as parser_utils
 import html
 
-def content_to_html(txt: str, entities: List[MessageEntity] = None) -> str:
+def content_to_html(txt: str, entities: List[MessageEntity] = None, is_already_html: bool = False) -> str:
+    if is_already_html:
+        return str(txt)
+        
     if not entities:
         return html.escape(str(txt))
     
@@ -63,8 +66,8 @@ class Button:
         self.same_line = same_line
         self.color = color
 
-def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int = 0) -> Tuple[str, List[Button]]:
-    full_content = content_to_html(txt, entities)
+def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, is_already_html: bool = False) -> Tuple[str, List[Button]]:
+    full_content = content_to_html(txt, entities, is_already_html=is_already_html)
     prev = 0
     note_data = ""
     buttons = []

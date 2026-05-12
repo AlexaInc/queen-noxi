@@ -128,6 +128,7 @@ async def new_member(client: Client, message: Message):
                 res, flags = await format_message(random.choice(sql.DEFAULT_WELCOME_MESSAGES), new_mem, chat)
 
             if welc_type == Types.TEXT or welc_type == Types.BUTTON_TEXT:
+                flags.pop("has_spoiler", None)
                 sent = await message.reply_text(
                     res,
                     reply_markup=keyboard,

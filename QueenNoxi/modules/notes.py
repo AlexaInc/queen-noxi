@@ -70,6 +70,7 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
                 return
 
             if note.msgtype in (Types.BUTTON_TEXT, Types.TEXT):
+                flags.pop("has_spoiler", None)
                 await message.reply_text(
                     text,
                     reply_to_message_id=reply_id,

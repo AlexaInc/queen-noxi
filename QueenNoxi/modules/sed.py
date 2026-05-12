@@ -9,9 +9,11 @@ from QueenNoxi.modules.helper_funcs.regex_helper import infinite_loop_check
 DELIMITERS = ("/", ":", "|", "_")
 
 def separate_sed(sed_string):
+    if not sed_string or len(sed_string) < 3:
+        return None
+        
     if (
-        len(sed_string) >= 3
-        and sed_string[1] in DELIMITERS
+        sed_string[1] in DELIMITERS
         and sed_string.count(sed_string[1]) >= 2
     ):
         delim = sed_string[1]

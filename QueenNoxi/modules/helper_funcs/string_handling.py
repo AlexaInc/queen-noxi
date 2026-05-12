@@ -54,38 +54,52 @@ class Button:
         self.same_line = same_line
         self.color = color
 
-def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int = 0) -> Tuple[str, List[Button]]:
-    markdown_note = markdown_parser(txt, entities, offset)
+def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, is_html: bool = False) -> Tuple[str, List[Button]]:
+    """
+    Parses buttons from text. 
+    If entities are provided, it converts text to HTML first.
+    If is_html is True, it assumes txt is already HTML and won't escape it.
+    """
+    if entities:
+        working_text = content_to_html(txt, entities)
+    elif is_html:
+        working_text = txt
+    else:
+        working_text = html.escape(str(txt))
+
     prev = 0
     note_data = ""
     buttons = []
-    for match in BTN_URL_REGEX.finditer(markdown_note):
+    
+    # We use the surrogated version for button extraction to ensure indices are perfect
+    from pyrogram.parser.utils import add_surrogates
+    surrogated_note = add_surrogates(working_text)
+    
+    for match in BTN_URL_REGEX.finditer(surrogated_note):
         n_escapes = 0
         to_check = match.start(1) - 1
-        while to_check > 0 and markdown_note[to_check] == "\\":
+        while to_check > 0 and surrogated_note[to_check] == "\\":
             n_escapes += 1
             to_check -= 1
 
         if n_escapes % 2 == 0:
-            # match.group(2) -> name
-            # match.group(3) -> color
-            # match.group(5) -> url/back/next/home
-            # match.group(6) -> :same
             buttons.append(Button(
                 match.group(2),
                 match.group(5),
                 bool(match.group(6)),
                 match.group(3)
             ))
-            note_data += markdown_note[prev : match.start(1)]
+            note_data += surrogated_note[prev : match.start(1)]
             prev = match.end(1)
         else:
-            note_data += markdown_note[prev : match.start(1) - 1]
+            note_data += surrogated_note[prev : match.start(1) - 1]
             prev = match.start(1) - 1
     else:
-        note_data += markdown_note[prev:]
+        note_data += surrogated_note[prev:]
 
-    return note_data, buttons
+    # note_data is still surrogated, we return it as a normal string
+    from pyrogram.parser.utils import remove_surrogates
+    return remove_surrogates(note_data), buttons
 
 def escape_invalid_curly_brackets(text: str, valids: List[str]) -> str:
     new_text = ""

@@ -69,7 +69,7 @@ async def add_filter(client: Client, message: Message):
                         segment_entities.append(new_ent)
                 
                 html_text = content_to_html(inner_text, segment_entities)
-                t, b = button_markdown_parser(html_text)
+                t, b = button_markdown_parser(html_text, is_html=True)
                 
                 # Save tags as NOTES
                 note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
@@ -144,8 +144,9 @@ async def add_filter(client: Client, message: Message):
                         new_ent.offset -= abs_start
                         segment_entities.append(new_ent)
                 
+                # Convert this specific segment to HTML
                 html_text = content_to_html(inner_text, segment_entities)
-                t, b = button_markdown_parser(html_text)
+                t, b = button_markdown_parser(html_text, is_html=True)
                 
                 # Save tags as NOTES
                 note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)

@@ -187,8 +187,8 @@ async def save(client: Client, message: Message):
                 # Convert this specific segment to HTML
                 html_text = content_to_html(inner_text, segment_entities)
                 
-                # Parse buttons from the HTML (button_markdown_parser handles HTML markers too)
-                t, b = button_markdown_parser(html_text)
+                # Parse buttons from the HTML - use is_html=True to prevent double-escaping
+                t, b = button_markdown_parser(html_text, is_html=True)
                 
                 sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
                 saved.append(name)
@@ -259,7 +259,7 @@ async def save(client: Client, message: Message):
                     segment_entities.append(new_ent)
             
             html_text = content_to_html(inner_text, segment_entities)
-            t, b = button_markdown_parser(html_text)
+            t, b = button_markdown_parser(html_text, is_html=True)
             
             sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
             saved.append(name)

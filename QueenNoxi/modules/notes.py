@@ -72,8 +72,14 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
                 # unless a different file_id is required.
                 is_current_media = bool(query.message.photo or query.message.video or query.message.document or query.message.animation or query.message.voice or query.message.audio)
                 
-                # Filter out flags that are not compatible with edit_message_text/caption
-                edit_flags = {k: v for k, v in flags.items() if k not in ["disable_notification", "protect_content", "has_spoiler"]}
+                # Filter flags for edit_message_text/caption
+                # edit_flags: only formatting/UI flags, NO notification/protective flags
+                edit_flags = {k: v for k, v in flags.items() if k not in ["disable_notification", "protect_content", "has_spoiler", "disable_web_page_preview"]}
+                
+                # Text edit supports disable_web_page_preview
+                text_edit_flags = edit_flags.copy()
+                if "disable_web_page_preview" in flags:
+                    text_edit_flags["disable_web_page_preview"] = flags["disable_web_page_preview"]
 
                 if note.msgtype in (Types.BUTTON_TEXT, Types.TEXT):
                     if is_current_media:
@@ -90,7 +96,7 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
                             text,
                             parse_mode=parse_mode,
                             reply_markup=keyboard,
-                            **edit_flags
+                            **text_edit_flags
                         )
                         return
                 
@@ -108,6 +114,9 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
                         # Fallback: resend if moving from text to media
                         pass
 
+            # Media flags filter (no disable_web_page_preview)
+            media_flags = {k: v for k, v in flags.items() if k != "disable_web_page_preview"}
+
             if note.msgtype in (Types.BUTTON_TEXT, Types.TEXT):
                 flags.pop("has_spoiler", None)
                 await message.reply_text(
@@ -118,19 +127,27 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
                     **flags
                 )
             elif note.msgtype == Types.STICKER:
-                await client.send_sticker(chat_id, note.file, reply_to_message_id=reply_id, reply_markup=keyboard, **flags)
+                # Stickers don't support caption or web_page_preview or has_spoiler
+                stk_flags = {k: v for k, v in media_flags.items() if k not in ["has_spoiler"]}
+                await client.send_sticker(chat_id, note.file, reply_to_message_id=reply_id, reply_markup=keyboard, **stk_flags)
             elif note.msgtype == Types.DOCUMENT:
-                await client.send_document(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **flags)
+                doc_flags = {k: v for k, v in media_flags.items() if k not in ["has_spoiler"]}
+                await client.send_document(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **doc_flags)
             elif note.msgtype == Types.PHOTO:
-                await client.send_photo(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **flags)
+                await client.send_photo(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **media_flags)
             elif note.msgtype == Types.AUDIO:
-                await client.send_audio(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **flags)
+                aud_flags = {k: v for k, v in media_flags.items() if k not in ["has_spoiler"]}
+                await client.send_audio(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **aud_flags)
             elif note.msgtype == Types.VOICE:
-                await client.send_voice(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **flags)
+                v_flags = {k: v for k, v in media_flags.items() if k not in ["has_spoiler"]}
+                await client.send_voice(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **v_flags)
             elif note.msgtype == Types.VIDEO:
-                await client.send_video(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **flags)
+                await client.send_video(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **media_flags)
             elif note.msgtype == Types.VIDEO_NOTE:
-                await client.send_video_note(chat_id, note.file, reply_to_message_id=reply_id, reply_markup=keyboard, **flags)
+                vn_flags = {k: v for k, v in media_flags.items() if k not in ["has_spoiler"]}
+                await client.send_video_note(chat_id, note.file, reply_to_message_id=reply_id, reply_markup=keyboard, **vn_flags)
+            elif note.msgtype == Types.ANIMATION:
+                await client.send_animation(chat_id, note.file, caption=text, reply_to_message_id=reply_id, parse_mode=parse_mode, reply_markup=keyboard, **media_flags)
 
         except RPCError as e:
             if query:

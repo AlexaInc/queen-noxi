@@ -292,7 +292,7 @@ async def reply_filter(client: Client, message: Message):
             parse_mode = enums.ParseMode.HTML
 
             if filt.file_type in (Types.TEXT, Types.BUTTON_TEXT):
-                flags.pop("has_spoiler", None)
+                # Text supports all formatting flags
                 await message.reply_text(
                     res,
                     reply_markup=keyboard,
@@ -301,6 +301,13 @@ async def reply_filter(client: Client, message: Message):
                     **flags
                 )
             else:
+                # Media DOES NOT support disable_web_page_preview
+                media_flags = {k: v for k, v in flags.items() if k != "disable_web_page_preview"}
+                
+                # Check photo/video for spoiler support
+                if filt.file_type not in (Types.PHOTO, Types.VIDEO):
+                    media_flags.pop("has_spoiler", None)
+
                 await client.send_cached_media(
                     chat_id,
                     filt.file_id,
@@ -308,7 +315,7 @@ async def reply_filter(client: Client, message: Message):
                     reply_markup=keyboard,
                     reply_to_message_id=message.id,
                     parse_mode=parse_mode,
-                    **flags
+                    **media_flags
                 )
             break
 

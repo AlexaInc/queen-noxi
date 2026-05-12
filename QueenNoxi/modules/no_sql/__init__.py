@@ -12,7 +12,7 @@ try:
     client = MongoClient(MONGO_DB_URI)
 except PyMongoError:
     exit(1)
-main_db = client["MUKESH_ROBOT"]
+main_db = client["QUEEN_NOXI_DB"]
 QueenNoxiXdb = main_db
 
 # Sub-module imports AFTER QueenNoxidb is defined to avoid circular imports

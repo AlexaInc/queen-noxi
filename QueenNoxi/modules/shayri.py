@@ -2,7 +2,7 @@
 
 Copyright (c) 2023-24 Noob-QueenNoxi
 
-          GITHUB: NOOB-MUKESH
+          GITHUB: ALEXAINC
           TELEGRAM: @MR_SUKKUN
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

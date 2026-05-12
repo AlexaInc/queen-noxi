@@ -283,6 +283,12 @@ async def admin_animate(client: Client, message: Message, gif_key: str, frames: 
         await message.reply_text("ᴄᴀɴ'ᴛ sᴇᴇᴍ ᴛᴏ ғɪɴᴅ ᴛʜɪs ᴘᴇʀsᴏɴ.")
         return
 
+    # Check for admin protection
+    from QueenNoxi.modules.helper_funcs.chat_status import is_user_ban_protected
+    if gif_key in ["ban", "mute"] and await is_user_ban_protected(message.chat, user_id, member):
+        await message.reply_text("✨ ᴛʜɪs ᴜsᴇʀ sᴇᴇᴍs ᴛᴏ ʙᴇ ᴘʀᴏᴛᴇᴄᴛᴇᴅ ʙʏ ᴀ ᴍɪɢʜᴛʏ ʙᴀʀʀɪᴇʀ! ɪ ᴄᴀɴɴᴏᴛ ʜᴀʀᴍ ᴀ ғᴇʟʟᴏᴡ ᴀᴅᴍɪɴ. ✨")
+        return
+
     # Try the admin action first
     try:
         success = await admin_func(user_id)

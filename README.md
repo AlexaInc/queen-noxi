@@ -1,5 +1,5 @@
 ---
-title: Queen Noxibot
+title: Queen Noxi
 emoji: 👸
 colorFrom: purple
 colorTo: pink

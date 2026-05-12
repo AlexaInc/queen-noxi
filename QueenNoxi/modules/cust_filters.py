@@ -40,8 +40,6 @@ async def add_filter(client: Client, message: Message):
         trigger = args[0].lower() if args else None
         
         # Super-Filter Parsing
-        import re
-        import re
         super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
         
         from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser

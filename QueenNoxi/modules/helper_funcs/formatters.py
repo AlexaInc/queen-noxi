@@ -12,8 +12,12 @@ async def format_message(text: str, user: User, chat: Chat) -> Tuple[str, Dict]:
     first = escape_markdown(user.first_name)
     last = escape_markdown(user.last_name or user.first_name)
     fullname = escape_markdown(f"{user.first_name} {user.last_name}" if user.last_name else user.first_name)
-    username = f"@{user.username}" if user.username else user.mention
-    mention = user.mention
+    
+    # Explicitly use markdown link for mention/username to prevent raw HTML issues
+    mention_link = f"[{first}](tg://user?id={user.id})"
+    
+    username = f"@{user.username}" if user.username else mention_link
+    mention = mention_link
     id = user.id
     chatname = escape_markdown(chat.title if chat and chat.type != enums.ChatType.PRIVATE else user.first_name)
     

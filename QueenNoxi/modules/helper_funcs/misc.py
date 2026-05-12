@@ -1,5 +1,6 @@
 from math import ceil
 from typing import Dict, List
+from pyrogram import enums
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -100,27 +101,28 @@ async def send_to_list(client, send_to: list, message: str, parse_mode=None) -> 
 
 def build_keyboard(buttons):
     keyb = []
+
+    COLOR_MAP = {
+        "success": enums.ButtonStyle.SUCCESS,
+        "danger":  enums.ButtonStyle.DANGER,
+        "primary": enums.ButtonStyle.PRIMARY,
+        "warning": enums.ButtonStyle.DANGER,   # no native warning; map to red
+    }
+
     for btn in buttons:
-        color_prefix = ""
-        if btn.color:
-            if btn.color == "success":
-                color_prefix = "🟢 "
-            elif btn.color == "danger":
-                color_prefix = "🔴 "
-            elif btn.color == "primary":
-                color_prefix = "🔵 "
-            elif btn.color == "warning":
-                color_prefix = "🟡 "
-        
-        btn_text = f"{color_prefix}{btn.name}"
-        
+        style = COLOR_MAP.get(btn.color, enums.ButtonStyle.DEFAULT) if btn.color else enums.ButtonStyle.DEFAULT
+
         if btn.url.startswith("#"):
             note_name = btn.url[1:]
-            button = InlineKeyboardButton(btn_text, callback_data=f"note_{note_name}")
-        elif btn.url in ("btn_next", "btn_back", "btn_home"):
-            button = InlineKeyboardButton(btn_text, callback_data=f"paginate_{btn.url}")
+            button = InlineKeyboardButton(btn.name, callback_data=f"note_{note_name}", style=style)
+        elif btn.url == "btn_next":
+            button = InlineKeyboardButton(btn.name, callback_data="page_next", style=style)
+        elif btn.url == "btn_back":
+            button = InlineKeyboardButton(btn.name, callback_data="page_prev", style=style)
+        elif btn.url == "btn_home":
+            button = InlineKeyboardButton(btn.name, callback_data="page_home", style=style)
         else:
-            button = InlineKeyboardButton(btn_text, url=btn.url)
+            button = InlineKeyboardButton(btn.name, url=btn.url, style=style)
 
         if btn.same_line and keyb:
             keyb[-1].append(button)

@@ -327,16 +327,42 @@ async def note_callback(client: Client, query):
     await get(client, query.message, notename, show_none=False, query=query)
     await query.answer()
 
-@pbot.on_callback_query(filters.regex(r"^paginate_.*"))
+@pbot.on_callback_query(filters.regex(r"^page_(next|prev|home)$"))
 async def paginate_callback(client: Client, query):
-    action = query.data.split("_", 1)[1]
-    # Simple pagination placeholder logic
-    if action == "btn_next":
-        await query.answer("Next Page (Sample logic)", show_alert=True)
-    elif action == "btn_back":
-        await query.answer("Back Page (Sample logic)", show_alert=True)
-    elif action == "btn_home":
-        await query.answer("Home Page (Sample logic)", show_alert=True)
+    action = query.data  # page_next / page_prev / page_home
+    chat_id = query.message.chat.id
+
+    # Determine the current note by scanning the existing message buttons for note_ callbacks
+    current_note = None
+    if query.message.reply_markup:
+        for row in query.message.reply_markup.inline_keyboard:
+            for btn in row:
+                if btn.callback_data and btn.callback_data.startswith("note_"):
+                    # Pick the first found note reference as a hint — typically "[Back](#prev)" button
+                    current_note = btn.callback_data.split("_", 1)[1]
+                    break
+            if current_note:
+                break
+
+    # Get all notes in the chat sorted alphabetically to determine prev/next
+    all_notes = sql.get_all_chat_notes(chat_id)
+    note_names = sorted([n.name.lower() for n in all_notes])
+
+    if action == "page_home":
+        target = note_names[0] if note_names else None
+    elif current_note and current_note in note_names:
+        idx = note_names.index(current_note)
+        if action == "page_next":
+            target = note_names[(idx + 1) % len(note_names)]
+        else:  # page_prev
+            target = note_names[(idx - 1) % len(note_names)]
+    else:
+        await query.answer("Could not determine current page.", show_alert=True)
+        return
+
+    if target:
+        await get(client, query.message, target, show_none=False, query=query)
+    await query.answer()
 
 
 @DisableAbleCommandHandler(["notes", "saved"])

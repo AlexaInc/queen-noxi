@@ -1,5 +1,6 @@
 import asyncio
 import aiohttp
+import html
 import os
 import random
 from pyrogram import filters, Client
@@ -233,18 +234,30 @@ async def animate(client: Client, message: Message, gif_key: str, frames: list, 
         except:
             pass
 
-async def admin_animate(client: Client, message: Message, gif_key: str, frames: list, action_verb: str, admin_func):
+async def admin_animate(client: Client, message: Message, gif_key: str, frames: list, action_verb: str, admin_func, reason: str = None):
     """Integrated animation for Admin commands (ban/mute)."""
-    if not message.reply_to_message:
-        await message.reply_text(f"❗ Please reply to a user to {gif_key} them!")
+    if not message.reply_to_message and len(message.command) < 2:
+        await message.reply_text(f"❗ Please reply to a user or provide a username to {gif_key} them!")
         return
 
-    # Check rights
-    user_id = message.reply_to_message.from_user.id
-    target_mention = message.reply_to_message.from_user.mention
-    sender_mention = message.from_user.mention
+    # Check target
+    from QueenNoxi.modules.helper_funcs.extraction import extract_user_and_text
+    user_id, extracted_reason = await extract_user_and_text(message, message.command[1:])
     
-    # Try the admin action first to ensure it's possible
+    # Use provided reason or extracted one
+    final_reason = reason or extracted_reason
+    
+    if not user_id:
+        await message.reply_text("ɪ ᴅᴏᴜʙᴛ ᴛʜᴀᴛ's ᴀ ᴜsᴇʀ.")
+        return
+
+    try:
+        member = await message.chat.get_member(user_id)
+    except:
+        await message.reply_text("ᴄᴀɴ'ᴛ sᴇᴇᴍ ᴛᴏ ғɪɴᴅ ᴛʜɪs ᴘᴇʀsᴏɴ.")
+        return
+
+    # Try the admin action first
     try:
         success = await admin_func(user_id)
         if not success:
@@ -253,8 +266,21 @@ async def admin_animate(client: Client, message: Message, gif_key: str, frames: 
         await message.reply_text(f"❌ Administration failed: {e}")
         return
 
-    caption = f"✨ {sender_mention} {action_verb} {target_mention}! ✨"
+    sender_mention = message.from_user.mention
+    target_mention = member.user.mention
     
+    # Matching the regular ban/mute format
+    title = "ʙᴀɴ ᴇᴠᴇɴᴛ" if gif_key == "ban" else "ᴍᴜᴛᴇ ᴇᴠᴇɴᴛ"
+    emoji = "❕" if gif_key == "ban" else "🕵️"
+    
+    caption = (
+        f"<code>{emoji}</code><b>{title}</b>\n"
+        f"<code> </code><b>•  {'ʙᴀɴɴᴇᴅ' if gif_key == 'ban' else 'ᴍᴜᴛᴇᴅ'} ʙʏ:</b> {sender_mention}\n"
+        f"<code> </code><b>•  ᴜsᴇʀ:</b> {target_mention}"
+    )
+    if final_reason:
+        caption += f"\n<code> </code><b>•  ʀᴇᴀsᴏɴ:</b> \n{html.escape(final_reason)}"
+
     # Text animation
     msg = await message.reply_text(frames[0])
     total_frames = len(frames)

@@ -25,7 +25,7 @@ from QueenNoxi.modules.helper_funcs.formatters import format_message
 
 # Do not async
 @connection_status
-async def get(client: Client, message: Message, notename: str, show_none=True, no_format=False):
+async def get(client: Client, message: Message, notename: str, show_none=True, no_format=False, query=None):
     chat_id = message.chat.id
     note = sql.get_note(chat_id, notename)
 
@@ -33,14 +33,14 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
         reply_id = message.reply_to_message.id if message.reply_to_message else message.id
 
         if note.is_reply:
-            # logic for forward_message - in Pyrogram we use message.forward() or client.copy_message()
-            # but note.value stores message_id if is_reply was True in PTB version
-            # We'll try copy_message
             try:
                 await client.copy_message(chat_id, chat_id, int(note.value), reply_to_message_id=reply_id)
                 return
             except RPCError:
-                await message.reply_text("This message seems to have been lost.")
+                if query:
+                    await query.answer("This message seems to have been lost.", show_alert=True)
+                else:
+                    await message.reply_text("This message seems to have been lost.")
                 sql.rm_note(chat_id, notename)
                 return
         
@@ -60,6 +60,15 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
         keyboard = InlineKeyboardMarkup(keyb) if keyb else None
 
         try:
+            if query and note.msgtype in (Types.BUTTON_TEXT, Types.TEXT):
+                await query.edit_message_text(
+                    text,
+                    parse_mode=parse_mode,
+                    reply_markup=keyboard,
+                    **flags
+                )
+                return
+
             if note.msgtype in (Types.BUTTON_TEXT, Types.TEXT):
                 await message.reply_text(
                     text,
@@ -84,10 +93,16 @@ async def get(client: Client, message: Message, notename: str, show_none=True, n
                 await client.send_video_note(chat_id, note.file, reply_to_message_id=reply_id, reply_markup=keyboard, **flags)
 
         except RPCError as e:
-            await message.reply_text(f"This note could not be sent. Error: {e.MESSAGE}")
+            if query:
+                await query.answer(f"Error: {e.MESSAGE}", show_alert=True)
+            else:
+                await message.reply_text(f"This note could not be sent. Error: {e.MESSAGE}")
             LOGGER.error(f"Could not send note {notename} in {chat_id}: {e}")
     elif show_none:
-        await message.reply_text("This note doesn't exist")
+        if query:
+            await query.answer("This note doesn't exist", show_alert=True)
+        else:
+            await message.reply_text("This note doesn't exist")
 
 
 @pbot.on_message(filters.command("get") & filters.group)
@@ -135,7 +150,7 @@ async def save(client: Client, message: Message):
         if matches:
             from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
             saved = []
-            for match in matches:
+            for i, match in enumerate(matches):
                 name = match.group(1).lower()
                 inner_text = match.group(2)
                 
@@ -153,6 +168,11 @@ async def save(client: Client, message: Message):
                 t, b = button_markdown_parser(inner_text, entities=segment_entities)
                 sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
                 saved.append(name)
+                
+                # If specific note_name was provided, point it to the first tag
+                if i == 0 and note_name:
+                    sql.add_note_to_db(chat_id, note_name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
+                    saved.append(note_name)
             
             await message.reply_text(f"Saved {len(saved)} super-notes from reply: {', '.join(saved)}")
             return
@@ -199,7 +219,7 @@ async def save(client: Client, message: Message):
     if matches:
         from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
         saved = []
-        for match in matches:
+        for i, match in enumerate(matches):
             name = match.group(1).lower()
             inner_text = match.group(2)
             start_idx = first_space + 1 + match.start(2)
@@ -216,6 +236,16 @@ async def save(client: Client, message: Message):
             t, b = button_markdown_parser(inner_text, entities=segment_entities)
             sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
             saved.append(name)
+
+            # Point primary note_name to first tag if provided
+            if i == 0:
+                # Find the note_name from command
+                args = raw_text.split()
+                if len(args) >= 2:
+                    cmd_note_name = args[1].lower()
+                    if cmd_note_name != name:
+                        sql.add_note_to_db(chat_id, cmd_note_name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
+                        saved.append(cmd_note_name)
             
         await message.reply_text(f"Saved {len(saved)} super-notes: {', '.join(saved)}")
         return
@@ -293,7 +323,7 @@ async def clearall_btn(client: Client, query):
 @pbot.on_callback_query(filters.regex(r"^note_.*"))
 async def note_callback(client: Client, query):
     notename = query.data.split("_", 1)[1]
-    await get(client, query.message, notename, show_none=False)
+    await get(client, query.message, notename, show_none=False, query=query)
     await query.answer()
 
 @pbot.on_callback_query(filters.regex(r"^paginate_.*"))

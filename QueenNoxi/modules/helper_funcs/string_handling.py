@@ -50,10 +50,16 @@ def markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int 
             res += _selective_escape(txt[prev:start]) + "--" + ent_text + "--"
         elif ent.type == enums.MessageEntityType.SPOILER:
             res += _selective_escape(txt[prev:start]) + "||" + ent_text + "||"
+        elif ent.type == enums.MessageEntityType.STRIKETHROUGH:
+            res += _selective_escape(txt[prev:start]) + "~~" + ent_text + "~~"
+        elif ent.type == enums.MessageEntityType.UNDERLINE:
+            res += _selective_escape(txt[prev:start]) + "__" + ent_text + "__"
         elif ent.type == enums.MessageEntityType.CUSTOM_EMOJI:
             res += _selective_escape(txt[prev:start]) + f"[{ent_text}](tg://emoji?id={ent.custom_emoji_id})"
         elif ent.type == enums.MessageEntityType.CODE:
             res += _selective_escape(txt[prev:start]) + "`" + ent_text + "`"
+        elif ent.type == enums.MessageEntityType.PRE:
+            res += _selective_escape(txt[prev:start]) + "```" + (ent.language or "") + "\n" + ent_text + "```"
         elif ent.type == enums.MessageEntityType.URL:
             if any(match.start(1) <= start and end <= match.end(1) for match in LINK_REGEX.finditer(txt)):
                 continue
@@ -61,6 +67,10 @@ def markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int 
                 res += _selective_escape(txt[prev:start]) + ent_text
         elif ent.type == enums.MessageEntityType.TEXT_LINK:
             res += _selective_escape(txt[prev:start]) + f"[{ent_text}]({ent.url})"
+        elif ent.type == enums.MessageEntityType.MENTION:
+            res += _selective_escape(txt[prev:start]) + ent_text
+        elif ent.type == enums.MessageEntityType.TEXT_MENTION:
+            res += _selective_escape(txt[prev:start]) + f"[{ent_text}](tg://user?id={ent.user.id})"
         prev = end
     
     res += _selective_escape(txt[prev:])

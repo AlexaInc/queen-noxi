@@ -180,6 +180,7 @@ def add_filter(
             is_voice,
             is_video,
             bool(buttons),
+            reply_text=reply,
         )
 
         if keyword not in CHAT_FILTERS.get(str(chat_id), []):

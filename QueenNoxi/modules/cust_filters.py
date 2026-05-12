@@ -47,7 +47,7 @@ async def add_filter(client: Client, message: Message):
         if matches:
             from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
             saved = []
-            for match in matches:
+            for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
                 inner_text = match.group(2).strip()
                 
@@ -65,6 +65,12 @@ async def add_filter(client: Client, message: Message):
                 t, b = button_markdown_parser(inner_text, entities=segment_entities)
                 sql.add_filter(chat_id, keyword, t, buttons=b)
                 saved.append(keyword)
+
+                # Point primary trigger to first tag
+                if i == 0 and trigger:
+                    sql.add_filter(chat_id, trigger, t, buttons=b)
+                    if trigger != keyword:
+                        saved.append(trigger)
             
             await message.reply_text(f"Saved {len(saved)} super-filters from reply: {', '.join(saved)}")
             return
@@ -108,7 +114,7 @@ async def add_filter(client: Client, message: Message):
         if matches:
             from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
             saved_filters = []
-            for match in matches:
+            for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
                 inner_text = match.group(2).strip()
                 
@@ -126,6 +132,15 @@ async def add_filter(client: Client, message: Message):
                 t, b = button_markdown_parser(inner_text, entities=segment_entities)
                 sql.add_filter(chat_id, keyword, t, buttons=b)
                 saved_filters.append(keyword)
+
+                # Point primary trigger from args if provided
+                if i == 0:
+                    args = raw_text.split()
+                    if len(args) >= 2:
+                        cmd_trigger = args[1].lower()
+                        if cmd_trigger != keyword:
+                            sql.add_filter(chat_id, cmd_trigger, t, buttons=b)
+                            saved_filters.append(cmd_trigger)
             
             await message.reply_text(f"Successfully saved {len(saved_filters)} filters: {', '.join(saved_filters)}")
             return

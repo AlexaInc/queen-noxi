@@ -34,7 +34,7 @@ pretty-errors
 pydictionary==2.0.1
 pyfiglet
 # pykeyboard removed due to pyrogram version conflict
-pymongo==4.9.2
+pymongo==4.17.0
 pynewtonmath==1.0.1
 pyrate-limiter==2.10.0
 pyshorteners

@@ -262,16 +262,19 @@ async def left_member_handler(client: Client, message: Message):
     await goodbye_member(client, message.chat, message.left_chat_member, message=message)
 
 @pbot.on_chat_member_updated(filters.group)
-async def member_has_joined_updated(client: Client, member: CallbackQuery):
+async def member_has_joined_updated(client: Client, member):
+    old = member.old_chat_member
+    new = member.new_chat_member
+
     # Large group join detection (no service message)
-    if (not member.old_chat_member or member.old_chat_member.status in (enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.RESTRICTED)) and \
-       member.new_chat_member.status == enums.ChatMemberStatus.MEMBER:
-        await greet_member(client, member.chat, member.new_chat_member.user)
+    if new and new.status == enums.ChatMemberStatus.MEMBER:
+        if not old or old.status in (enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.RESTRICTED):
+            await greet_member(client, member.chat, new.user)
     
     # Large group leave detection
-    elif member.old_chat_member and member.old_chat_member.status == enums.ChatMemberStatus.MEMBER and \
-         member.new_chat_member.status in (enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED):
-        await goodbye_member(client, member.chat, member.old_chat_member.user)
+    elif old and old.status == enums.ChatMemberStatus.MEMBER:
+        if not new or new.status in (enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED):
+            await goodbye_member(client, member.chat, old.user)
 
 @pbot.on_message(filters.command("welcome") & filters.group)
 @user_admin

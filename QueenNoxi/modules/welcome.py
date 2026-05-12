@@ -102,8 +102,8 @@ async def new_member(client: Client, message: Message):
             await message.reply_text("Watashi ga kita!")
             continue
 
-        if await is_user_gbanned(new_mem.id):
-            await chat.ban_member(new_mem.id)
+        if is_user_gbanned(new_mem.id):
+            await client.ban_chat_member(chat.id, new_mem.id)
             continue
 
         # Special welcomes for devs/sudos etc.

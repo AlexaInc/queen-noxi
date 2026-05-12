@@ -115,13 +115,82 @@ async def hash_get(client: Client, message: Message):
 async def save(client: Client, message: Message):
     chat_id = message.chat.id
     raw_text = message.text or message.caption
+    entities = message.entities or message.caption_entities or []
+    
+    # Check if it's a reply
+    if message.reply_to_message:
+        replied = message.reply_to_message
+        content_text = replied.text or replied.caption or ""
+        content_entities = replied.entities or replied.caption_entities or []
+        
+        # Note name comes from the command args
+        args = message.command[1:]
+        note_name = args[0].lower() if args else None
+        
+        # Check for tags in replied message
+        import re
+        super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        matches = list(re.finditer(super_note_pattern, content_text, re.DOTALL))
+        
+        if matches:
+            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
+            saved = []
+            for match in matches:
+                name = match.group(1).lower()
+                inner_text = match.group(2)
+                
+                # Slicing entities
+                start_idx = match.start(2)
+                end_idx = match.end(2)
+                segment_entities = []
+                for ent in content_entities:
+                    if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                        import copy
+                        new_ent = copy.copy(ent)
+                        new_ent.offset -= start_idx
+                        segment_entities.append(new_ent)
+                
+                t, b = button_markdown_parser(inner_text, entities=segment_entities)
+                sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
+                saved.append(name)
+            
+            await message.reply_text(f"Saved {len(saved)} super-notes from reply: {', '.join(saved)}")
+            return
+        
+        if not note_name:
+            await message.reply_text("Specify a note name to save the reply!")
+            return
+            
+        # No tags, save the whole replied message
+        from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
+        t, b = button_markdown_parser(content_text, entities=content_entities)
+        
+        # Handle media
+        if replied.sticker:
+            sql.add_note_to_db(chat_id, note_name, t, Types.STICKER, file=replied.sticker.file_id, buttons=b)
+        elif replied.document:
+            sql.add_note_to_db(chat_id, note_name, t, Types.DOCUMENT, file=replied.document.file_id, buttons=b)
+        elif replied.photo:
+            sql.add_note_to_db(chat_id, note_name, t, Types.PHOTO, file=replied.photo.file_id, buttons=b)
+        elif replied.audio:
+            sql.add_note_to_db(chat_id, note_name, t, Types.AUDIO, file=replied.audio.file_id, buttons=b)
+        elif replied.voice:
+            sql.add_note_to_db(chat_id, note_name, t, Types.VOICE, file=replied.voice.file_id, buttons=b)
+        elif replied.video:
+            sql.add_note_to_db(chat_id, note_name, t, Types.VIDEO, file=replied.video.file_id, buttons=b)
+        else:
+            sql.add_note_to_db(chat_id, note_name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
+            
+        await message.reply_text(f"Yas! Added note `{note_name}` from reply.")
+        return
+
+    # Non-reply case (legacy support for /save name content)
     import re
     super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
     
-    # We want the text after the command
     first_space = raw_text.find(" ")
     if first_space == -1:
-        await message.reply_text("Dude, you need to specify a note name or use super-tags!")
+        await message.reply_text("Specify a note name or reply to a message!")
         return
     
     content_to_parse = raw_text[first_space+1:]
@@ -129,21 +198,16 @@ async def save(client: Client, message: Message):
 
     if matches:
         from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
-        entities = message.entities or message.caption_entities or []
         saved = []
         for match in matches:
             name = match.group(1).lower()
             inner_text = match.group(2)
-            
-            # Start and End indices in raw_text
             start_idx = first_space + 1 + match.start(2)
             end_idx = first_space + 1 + match.end(2)
             
-            # Filter and shift entities
             segment_entities = []
             for ent in entities:
                 if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
-                    # Clone entity and shift offset
                     import copy
                     new_ent = copy.copy(ent)
                     new_ent.offset -= start_idx
@@ -153,7 +217,7 @@ async def save(client: Client, message: Message):
             sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
             saved.append(name)
             
-        await message.reply_text(f"Successfully saved {len(saved)} super-notes: {', '.join(saved)}")
+        await message.reply_text(f"Saved {len(saved)} super-notes: {', '.join(saved)}")
         return
 
     note_name, text, data_type, content, buttons = await get_note_type(message)

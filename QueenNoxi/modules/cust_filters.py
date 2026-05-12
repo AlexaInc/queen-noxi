@@ -26,12 +26,80 @@ HANDLER_GROUP = 10
 @user_admin
 @connection_status
 async def add_filter(client: Client, message: Message):
-    # Super-Filter Parsing
+    chat_id = message.chat.id
+    raw_text = message.text or message.caption
+    entities = message.entities or message.caption_entities or []
+    
+    # Check if it's a reply
+    if message.reply_to_message:
+        replied = message.reply_to_message
+        content_text = replied.text or replied.caption or ""
+        content_entities = replied.entities or replied.caption_entities or []
+        
+        args = message.command[1:]
+        trigger = args[0].lower() if args else None
+        
+        # Super-Filter Parsing
+        import re
+        super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        matches = list(re.finditer(super_filt_pattern, content_text, re.DOTALL))
+        
+        if matches:
+            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
+            saved = []
+            for match in matches:
+                keyword = match.group(1).lower()
+                inner_text = match.group(2).strip()
+                
+                # Slicing entities
+                start_idx = match.start(2)
+                end_idx = match.end(2)
+                segment_entities = []
+                for ent in content_entities:
+                    if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                        import copy
+                        new_ent = copy.copy(ent)
+                        new_ent.offset -= start_idx
+                        segment_entities.append(new_ent)
+                
+                t, b = button_markdown_parser(inner_text, entities=segment_entities)
+                sql.add_filter(chat_id, keyword, t, buttons=b)
+                saved.append(keyword)
+            
+            await message.reply_text(f"Saved {len(saved)} super-filters from reply: {', '.join(saved)}")
+            return
+        
+        if not trigger:
+            await message.reply_text("Specify a trigger name to save the reply!")
+            return
+            
+        # No tags, save the whole replied message
+        from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
+        t, b = button_markdown_parser(content_text, entities=content_entities)
+        
+        # Handle media filters
+        if replied.sticker:
+            sql.add_filter(chat_id, trigger, t, is_sticker=True, buttons=b)
+        elif replied.document:
+            sql.add_filter(chat_id, trigger, t, is_document=True, buttons=b)
+        elif replied.photo:
+            sql.add_filter(chat_id, trigger, t, is_image=True, buttons=b)
+        elif replied.audio:
+            sql.add_filter(chat_id, trigger, t, is_audio=True, buttons=b)
+        elif replied.voice:
+            sql.add_filter(chat_id, trigger, t, is_voice=True, buttons=b)
+        elif replied.video:
+            sql.add_filter(chat_id, trigger, t, is_video=True, buttons=b)
+        else:
+            sql.add_filter(chat_id, trigger, t, buttons=b)
+            
+        await message.reply_text(f"Yas! Added filter `{trigger}` from reply.")
+        return
+
+    # Non-reply case
     import re
     super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
-    raw_text = message.text or message.caption
     
-    # We want the text after the command
     first_space = raw_text.find(" ")
     if first_space != -1:
         content_to_parse = raw_text[first_space+1:]
@@ -39,17 +107,14 @@ async def add_filter(client: Client, message: Message):
         
         if matches:
             from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
-            entities = message.entities or message.caption_entities or []
             saved_filters = []
             for match in matches:
                 keyword = match.group(1).lower()
                 inner_text = match.group(2).strip()
                 
-                # Start and End indices in raw_text
                 start_idx = first_space + 1 + match.start(2)
                 end_idx = first_space + 1 + match.end(2)
                 
-                # Filter and shift entities
                 segment_entities = []
                 for ent in entities:
                     if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
@@ -59,7 +124,7 @@ async def add_filter(client: Client, message: Message):
                         segment_entities.append(new_ent)
                 
                 t, b = button_markdown_parser(inner_text, entities=segment_entities)
-                sql.add_filter(message.chat.id, keyword, t, buttons=b)
+                sql.add_filter(chat_id, keyword, t, buttons=b)
                 saved_filters.append(keyword)
             
             await message.reply_text(f"Successfully saved {len(saved_filters)} filters: {', '.join(saved_filters)}")

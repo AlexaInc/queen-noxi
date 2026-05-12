@@ -198,6 +198,53 @@ async def welcome(client: Client, message: Message):
 @user_admin
 async def set_welcome_msg(client: Client, message: Message):
     chat = message.chat
+    
+    # Super-Note Auto-save in SetWelcome
+    if message.reply_to_message:
+        replied = message.reply_to_message
+        content_text = replied.text or replied.caption or ""
+        content_entities = replied.entities or replied.caption_entities or []
+        
+        import re
+        super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        matches = list(re.finditer(super_note_pattern, content_text, re.DOTALL))
+        
+        if matches:
+            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
+            import QueenNoxi.modules.sql.notes_sql as note_sql
+            saved_notes = []
+            main_welcome_text = None
+            main_welcome_buttons = []
+            
+            for i, match in enumerate(matches):
+                name = match.group(1).lower()
+                inner_text = match.group(2).strip()
+                
+                start_idx = match.start(2)
+                end_idx = match.end(2)
+                segment_entities = []
+                for ent in content_entities:
+                    if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                        import copy
+                        new_ent = copy.copy(ent)
+                        new_ent.offset -= start_idx
+                        segment_entities.append(new_ent)
+                
+                t, b = button_markdown_parser(inner_text, entities=segment_entities)
+                note_sql.add_note_to_db(chat.id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
+                saved_notes.append(name)
+                
+                if i == 0:
+                    main_welcome_text = t
+                    main_welcome_buttons = b
+            
+            await message.reply_text(f"Detected and saved {len(saved_notes)} notes from tags: {', '.join(saved_notes)}")
+            
+            # Set the first tag as welcome
+            sql.set_custom_welcome(chat.id, None, main_welcome_text, Types.BUTTON_TEXT if main_welcome_buttons else Types.TEXT, main_welcome_buttons)
+            await message.reply_text("Successfully set the first tag as your welcome message!")
+            return
+    
     text, data_type, content, buttons = await get_welcome_type(message)
 
     if not data_type:

@@ -18,7 +18,12 @@ import shutil
 from QueenNoxi.modules.disable import DisableAbleCommandHandler
 
 
-from QueenNoxi.modules.helper_funcs.chat_status import user_admin
+from QueenNoxi.modules.helper_funcs.chat_status import (
+    user_admin, 
+    bot_admin, 
+    can_restrict, 
+    user_can_ban
+)
 
 # ── Setup Caching ────────────────────────────────────────────────────────────
 CACHE_DIR = "QueenNoxi/resources/animation_cache"
@@ -146,6 +151,9 @@ pat_ani = ["Patting...", "Pat pat... ✨", "Good job! 💖", "✋✨", "😊"]
 hug_ani = ["Hugging...", "HUG! 🤗", "Warm hugs! ❤️", "🫂❤️", "✨"]
 kiss_ani = ["Kissing...", "KISS! 💋", "Muah! 💘", "😘💋", "🔥"]
 
+ban_ani = ["Banning...", "Preparing the hammer... 🔨", "Aiming at target... 🎯", "Swing! 🚀", "BANNED! 💀", "❌"]
+mute_ani = ["Muting...", "Silencing the noise... 🤫", "Locking the mouth! 🔒", "MUTED! 🤐", "✅"]
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -214,6 +222,51 @@ async def animate(client: Client, message: Message, gif_key: str, frames: list, 
     
     # Only delete the temporary text animation message if GIF succeeded
     # Otherwise, edit it to keep the result visible
+    if gif_msg:
+        try:
+            await msg.delete()
+        except:
+            pass
+    else:
+        try:
+            await msg.edit_text(caption)
+        except:
+            pass
+
+async def admin_animate(client: Client, message: Message, gif_key: str, frames: list, action_verb: str, admin_func):
+    """Integrated animation for Admin commands (ban/mute)."""
+    if not message.reply_to_message:
+        await message.reply_text(f"❗ Please reply to a user to {gif_key} them!")
+        return
+
+    # Check rights
+    user_id = message.reply_to_message.from_user.id
+    target_mention = message.reply_to_message.from_user.mention
+    sender_mention = message.from_user.mention
+    
+    # Try the admin action first to ensure it's possible
+    try:
+        success = await admin_func(user_id)
+        if not success:
+            return
+    except Exception as e:
+        await message.reply_text(f"❌ Administration failed: {e}")
+        return
+
+    caption = f"✨ {sender_mention} {action_verb} {target_mention}! ✨"
+    
+    # Text animation
+    msg = await message.reply_text(frames[0])
+    total_frames = len(frames)
+    for x in range(1, total_frames):
+        try:
+            await msg.edit_text(frames[x])
+            await asyncio.sleep(0.5)
+        except:
+            break
+            
+    # GIF result
+    gif_msg = await send_gif_with_caption(client, message.chat.id, gif_key, caption)
     if gif_msg:
         try:
             await msg.delete()
@@ -323,6 +376,38 @@ async def hug(client: Client, message: Message):
 async def kiss(client: Client, message: Message):
     await animate(client, message, "kiss", kiss_ani, "kissed")
 
+@pbot.on_message(filters.command("aban") & filters.group)
+@user_admin
+@bot_admin
+@user_can_ban
+@can_restrict
+async def aban_cmd(client: Client, message: Message):
+    async def ban_logic(uid):
+        try:
+            await message.chat.ban_member(uid)
+            return True
+        except RPCError as e:
+            await message.reply_text(f"❌ Failed to ban: {e.MESSAGE}")
+            return False
+            
+    await admin_animate(client, message, "ban", ban_ani, "banned", ban_logic)
+
+@pbot.on_message(filters.command("amute") & filters.group)
+@user_admin
+@bot_admin
+@can_restrict
+async def amute_cmd(client: Client, message: Message):
+    async def mute_logic(uid):
+        from pyrogram.types import ChatPermissions
+        try:
+            await message.chat.restrict_member(uid, ChatPermissions(can_send_messages=False))
+            return True
+        except RPCError as e:
+            await message.reply_text(f"❌ Failed to mute: {e.MESSAGE}")
+            return False
+            
+    await admin_animate(client, message, "mute", mute_ani, "muted", mute_logic)
+
 
 
 __mod_name__ = "Animation"
@@ -340,5 +425,7 @@ __help__ = """
 • `/police` — ᴩᴏʟɪᴄᴇ ᴀɴɪᴍᴀᴛɪᴏɴ
 • `/brain` — ʙʀᴀɪɴ ᴀɴɪᴍᴀᴛɪᴏɴ
 • `/clock` — ᴄʟᴏᴄᴋ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/aban` — ᴀɴɪᴍᴀᴛᴇᴅ ʙᴀɴ
+• `/amute` — ᴀɴɪᴍᴀᴛᴇᴅ ᴍᴜᴛᴇ
 """
 

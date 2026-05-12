@@ -217,8 +217,8 @@ async def send_gif_with_caption(client: Client, chat_id: int, gif_key: str, capt
 
 async def animate(client: Client, message: Message, gif_key: str, frames: list, action_verb: str, sleep: float = 0.5):
     """Perform text animation, then send GIF with caption."""
-    if not message.reply_to_message:
-        await message.reply_text(f"❗ Please reply to a user to {gif_key} them!")
+    if not message.reply_to_message or not message.reply_to_message.from_user:
+        await message.reply_text(f"❗ Please reply to a real user to {gif_key} them!")
         return
 
     sender = message.from_user.mention

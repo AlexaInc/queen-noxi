@@ -188,6 +188,11 @@ async def save(client: Client, message: Message):
                 from pyrogram.parser.utils import remove_surrogates
                 html_text = remove_surrogates(content_to_html(inner_text, segment_entities))
                 
+                # Debug logging to identify truncation
+                LOGGER.info(f"[DEBUG] Saving note '{name}': Content length {len(html_text)}")
+                if len(html_text) < 50:
+                    LOGGER.info(f"[DEBUG] Note '{name}' content: {html_text}")
+                
                 # Parse buttons from the HTML - use is_html=True to prevent double-escaping
                 t, b = button_markdown_parser(html_text, is_html=True)
                 

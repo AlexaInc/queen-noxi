@@ -148,13 +148,13 @@ async def greet_member(client: Client, chat, user, message: Message = None):
                     break
         
         keyb = build_keyboard(buttons, notename=_page_notename)
-        keyboard = InlineKeyboardMarkup(keyb)
+        keyboard = InlineKeyboardMarkup(keyb) if keyb else None
         
         res, flags = await format_message(cust_welcome, user, chat)
     else:
         res, flags = await format_message(random.choice(sql.DEFAULT_WELCOME_MESSAGES), user, chat)
         keyb = build_keyboard(buttons)
-        keyboard = InlineKeyboardMarkup(keyb)
+        keyboard = InlineKeyboardMarkup(keyb) if keyb else None
 
     sent = None
     if welc_type in (Types.TEXT, Types.BUTTON_TEXT):

@@ -151,29 +151,22 @@ async def save(client: Client, message: Message):
         # Check for tags in replied message
         import re
         super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
-        matches = list(re.finditer(super_note_pattern, content_text, re.DOTALL))
+        
+        # Convert the ENTIRE replied message to markdown first
+        from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
+        full_markdown = markdown_parser(content_text, content_entities)
+        
+        matches = list(re.finditer(super_note_pattern, full_markdown, re.DOTALL))
         
         if matches:
-            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
             saved = []
             for i, match in enumerate(matches):
                 name = match.group(1).lower()
-                raw_inner = match.group(2)
-                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
-                inner_text = raw_inner.strip()
+                inner_markdown = match.group(2).strip()
                 
-                # Slicing entities - adjust for tag position AND stripped leading whitespace
-                abs_start = match.start(2) + lead_strip
-                abs_end   = match.end(2)
-                segment_entities = []
-                for ent in content_entities:
-                    if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
-                        import copy
-                        new_ent = copy.copy(ent)
-                        new_ent.offset -= abs_start  # offset within stripped inner_text
-                        segment_entities.append(new_ent)
+                # Parse buttons from the already-markdownified inner text
+                t, b = button_markdown_parser(inner_markdown)
                 
-                t, b = button_markdown_parser(inner_text, entities=segment_entities)
                 sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
                 saved.append(name)
                 

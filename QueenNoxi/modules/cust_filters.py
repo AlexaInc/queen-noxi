@@ -104,31 +104,18 @@ async def add_filter(client: Client, message: Message):
     
     first_space = raw_text.find(" ")
     if first_space != -1:
-        content_to_parse = raw_text[first_space+1:]
-        matches = list(re.finditer(super_filt_pattern, content_to_parse, re.DOTALL))
+        from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
+        full_markdown = markdown_parser(raw_text, entities)
+        matches = list(re.finditer(super_filt_pattern, full_markdown, re.DOTALL))
         
         if matches:
-            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser
             import QueenNoxi.modules.sql.notes_sql as note_sql
             saved_notes = []
             for i, match in enumerate(matches):
                 keyword = match.group(1).lower()
-                raw_inner = match.group(2)
-                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
-                inner_text = raw_inner.strip()
+                inner_markdown = match.group(2).strip()
                 
-                start_idx = first_space + 1 + match.start(2) + lead_strip
-                end_idx = first_space + 1 + match.end(2)
-                
-                segment_entities = []
-                for ent in entities:
-                    if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
-                        import copy
-                        new_ent = copy.copy(ent)
-                        new_ent.offset -= start_idx
-                        segment_entities.append(new_ent)
-                
-                t, b = button_markdown_parser(inner_text, entities=segment_entities)
+                t, b = button_markdown_parser(inner_markdown)
                 
                 # Save tags as NOTES
                 note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)

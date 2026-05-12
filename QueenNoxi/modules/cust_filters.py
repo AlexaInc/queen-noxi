@@ -43,7 +43,8 @@ async def add_filter(client: Client, message: Message):
         from pyrogram.parser.utils import add_surrogates
         surrogated_text = add_surrogates(content_text)
         
-        super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        # Restrict tags to avoid collision with <b>, <i>, <u>, etc.
+        super_filt_pattern = r"<(p[0-9]+|[a-zA-Z0-9_-]{2,})>(.*?)</\1>"
         matches = list(re.finditer(super_filt_pattern, surrogated_text, re.DOTALL))
         
         if matches:
@@ -120,7 +121,7 @@ async def add_filter(client: Client, message: Message):
         from pyrogram.parser.utils import add_surrogates
         surrogated_text = add_surrogates(raw_text)
         
-        super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        super_filt_pattern = r"<(p[0-9]+|[a-zA-Z0-9_-]{2,})>(.*?)</\1>"
         matches = list(re.finditer(super_filt_pattern, surrogated_text, re.DOTALL))
         
         if matches:

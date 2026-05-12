@@ -158,7 +158,9 @@ async def save(client: Client, message: Message):
         surrogated_text = add_surrogates(content_text)
         
         import re
-        super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        # Restrict tags to avoid collision with <b>, <i>, <u>, etc.
+        # Matches tags like <p1>, <note_name>, but NOT single-letter HTML tags.
+        super_note_pattern = r"<(p[0-9]+|[a-zA-Z0-9_-]{2,})>(.*?)</\1>"
         matches = list(re.finditer(super_note_pattern, surrogated_text, re.DOTALL))
         
         if matches:
@@ -166,15 +168,15 @@ async def save(client: Client, message: Message):
             saved = []
             for i, match in enumerate(matches):
                 name = match.group(1).lower()
-                inner_text = match.group(2).strip("\n")
-                
-                # Calculate relative offset within surrogated text
-                # We strip leading newlines from inner_text, so we must adjust the start
                 raw_inner = match.group(2)
-                lead_strip = len(raw_inner) - len(raw_inner.lstrip("\n"))
+                
+                # Strip leading/trailing whitespace but keep track of how many characters we removed from the START
+                # for entity offset adjustment.
+                inner_text = raw_inner.strip()
+                lead_strip = len(raw_inner) - len(raw_inner.lstrip())
                 
                 abs_start = match.start(2) + lead_strip
-                abs_end   = match.end(2)
+                abs_end   = abs_start + len(inner_text)
                 
                 segment_entities = []
                 for ent in content_entities:

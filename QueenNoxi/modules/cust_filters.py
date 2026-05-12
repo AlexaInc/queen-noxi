@@ -97,7 +97,6 @@ async def add_filter(client: Client, message: Message):
         return
 
     # Non-reply case
-    import re
     super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
     
     first_space = raw_text.find(" ")

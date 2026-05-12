@@ -302,12 +302,22 @@ async def admin_animate(client: Client, message: Message, gif_key: str, frames: 
     target_mention = member.user.mention
     
     # Matching the regular ban/mute format
-    title = "ʙᴀɴ ᴇᴠᴇɴᴛ" if gif_key == "ban" else "ᴍᴜᴛᴇ ᴇᴠᴇɴᴛ"
-    emoji = "❕" if gif_key == "ban" else "🕵️"
+    if gif_key == "ban":
+        title = "ʙᴀɴ ᴇᴠᴇɴᴛ"
+        emoji = "❕"
+        verb = "ʙᴀɴɴᴇᴅ"
+    elif gif_key == "mute":
+        title = "ᴍᴜᴛᴇ ᴇᴠᴇɴᴛ"
+        emoji = "🕵️"
+        verb = "ᴍᴜᴛᴇᴅ"
+    else: # unmute
+        title = "ᴜɴᴍᴜᴛᴇ ᴇᴠᴇɴᴛ"
+        emoji = "🔓"
+        verb = "ᴜɴᴍᴜᴛᴇᴅ"
     
     caption = (
         f"<code>{emoji}</code><b>{title}</b>\n"
-        f"<code> </code><b>•  {'ʙᴀɴɴᴇᴅ' if gif_key == 'ban' else 'ᴍᴜᴛᴇᴅ'} ʙʏ:</b> {sender_mention}\n"
+        f"<code> </code><b>•  {verb} ʙʏ:</b> {sender_mention}\n"
         f"<code> </code><b>•  ᴜsᴇʀ:</b> {target_mention}"
     )
     if final_reason:

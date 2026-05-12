@@ -149,7 +149,7 @@ async def save(client: Client, message: Message):
         note_name = args[0].lower() if args else None
         
         # Check for tags in replied message
-        import re
+        # Note name comes from the command args
         super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
         
         # Convert the ENTIRE replied message to markdown first
@@ -206,7 +206,6 @@ async def save(client: Client, message: Message):
         return
 
     # Non-reply case (legacy support for /save name content)
-    import re
     super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
     
     first_space = raw_text.find(" ")

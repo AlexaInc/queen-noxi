@@ -36,7 +36,10 @@ async def get_random_gif(category: str):
     tenor_map = {
         "kill": "kill", "love": "love", "hug": "hug", "slap": "slap",
         "pat": "pat", "kiss": "kiss", "brain": "think", "moon": "sleep",
-        "hack": "hacker", "police": "police", "bombs": "explosion", "clock": "clock"
+        "hack": "hacker", "police": "police", "bombs": "explosion", "clock": "clock",
+        "punch": "punch", "kick": "kick", "bite": "bite", "lick": "lick",
+        "cuddle": "cuddle", "poke": "poke", "dance": "dance", "highfive": "highfive",
+        "cry": "cry", "laugh": "laugh"
     }
     
     action = tenor_map.get(category, category)
@@ -151,6 +154,16 @@ slap_ani = ["Slapping...", "SLAP! 👋", "Ouch! 💥", "👋💥", "😵"]
 pat_ani = ["Patting...", "Pat pat... ✨", "Good job! 💖", "✋✨", "😊"]
 hug_ani = ["Hugging...", "HUG! 🤗", "Warm hugs! ❤️", "🫂❤️", "✨"]
 kiss_ani = ["Kissing...", "KISS! 💋", "Muah! 💘", "😘💋", "🔥"]
+punch_ani = ["Punching...", "POW! 🥊", "That must hurt! 💥", "👊💥", "😵"]
+kick_ani = ["Kicking...", "KICK! 🦵", "Strong kick! 💥", "🦵💥", "😵"]
+bite_ani = ["Biting...", "CHOMP! 🦷", "Ouch, that's sharp! 🫦", "🦷✨", "😈"]
+lick_ani = ["Licking...", "LICK! 👅", "So sweet... 🍭", "👅✨", "😋"]
+cuddle_ani = ["Cuddling...", "CUDDLE! 🥰", "So cozy... 🧸", "🫂✨", "💖"]
+poke_ani = ["Poking...", "POKE! 👉", "Hey you! 📍", "👉✨", "🤭"]
+dance_ani = ["Dancing...", "DANCE! 💃", "Groovy baby! 🕺", "🎶✨", "🔥"]
+highfive_ani = ["High-fiving...", "HIGH FIVE! 🖐️", "Awesome! 🌟", "🖐️💥🖐️", "✅"]
+cry_ani = ["Crying...", "Uwaaaa! 😭", "So sad... 💔", "💧💧", "🥺"]
+laugh_ani = ["Laughing...", "HAHAHA! 😂", "Too funny! 🤣", "✨😆✨", "🔥"]
 
 ban_ani = [
     "🔨 Initializing BanHammer...", 
@@ -444,6 +457,56 @@ async def hug(client: Client, message: Message):
 async def kiss(client: Client, message: Message):
     await animate(client, message, "kiss", kiss_ani, "kissed")
 
+@pbot.on_message(filters.command("punch") & filters.group)
+@DisableAbleCommandHandler("punch")
+async def punch(client: Client, message: Message):
+    await animate(client, message, "punch", punch_ani, "punched")
+
+@pbot.on_message(filters.command("fkick") & filters.group)
+@DisableAbleCommandHandler("fkick")
+async def fkick(client: Client, message: Message):
+    await animate(client, message, "kick", kick_ani, "kicked")
+
+@pbot.on_message(filters.command("bite") & filters.group)
+@DisableAbleCommandHandler("bite")
+async def bite(client: Client, message: Message):
+    await animate(client, message, "bite", bite_ani, "bit")
+
+@pbot.on_message(filters.command("lick") & filters.group)
+@DisableAbleCommandHandler("lick")
+async def lick(client: Client, message: Message):
+    await animate(client, message, "lick", lick_ani, "licked")
+
+@pbot.on_message(filters.command("cuddle") & filters.group)
+@DisableAbleCommandHandler("cuddle")
+async def cuddle(client: Client, message: Message):
+    await animate(client, message, "cuddle", cuddle_ani, "cuddled")
+
+@pbot.on_message(filters.command("poke") & filters.group)
+@DisableAbleCommandHandler("poke")
+async def poke(client: Client, message: Message):
+    await animate(client, message, "poke", poke_ani, "poked")
+
+@pbot.on_message(filters.command("dance") & filters.group)
+@DisableAbleCommandHandler("dance")
+async def dance(client: Client, message: Message):
+    await animate(client, message, "dance", dance_ani, "danced with")
+
+@pbot.on_message(filters.command("highfive") & filters.group)
+@DisableAbleCommandHandler("highfive")
+async def highfive(client: Client, message: Message):
+    await animate(client, message, "highfive", highfive_ani, "gave a high-five to")
+
+@pbot.on_message(filters.command("cry") & filters.group)
+@DisableAbleCommandHandler("cry")
+async def cry(client: Client, message: Message):
+    await animate(client, message, "cry", cry_ani, "cried with")
+
+@pbot.on_message(filters.command("laugh") & filters.group)
+@DisableAbleCommandHandler("laugh")
+async def laugh(client: Client, message: Message):
+    await animate(client, message, "laugh", laugh_ani, "laughed at")
+
 @pbot.on_message(filters.command("aban") & filters.group)
 @user_admin
 @bot_admin
@@ -521,6 +584,16 @@ __help__ = """
 • `/police` — ᴩᴏʟɪᴄᴇ ᴀɴɪᴍᴀᴛɪᴏɴ
 • `/brain` — ʙʀᴀɪɴ ᴀɴɪᴍᴀᴛɪᴏɴ
 • `/clock` — ᴄʟᴏᴄᴋ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/punch` — ᴩᴜɴᴄʜ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/fkick` — ᴋɪᴄᴋ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/bite` — ʙɪᴛᴇ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/lick` — ʟɪᴄᴋ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/cuddle` — ᴄᴜᴅᴅʟᴇ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/poke` — ᴘᴏᴋᴇ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/dance` — ᴅᴀɴᴄᴇ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/highfive` — ʜɪɢʜғɪᴠᴇ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/cry` — ᴄʀʏ ᴀɴɪᴍᴀᴛɪᴏɴ
+• `/laugh` — ʟᴀᴜɢʜ ᴀɴɪᴍᴀᴛɪᴏɴ
 • `/aban` — ᴀɴɪᴍᴀᴛᴇᴅ ʙᴀɴ
 • `/amute` — ᴀɴɪᴍᴀᴛᴇᴅ ᴍᴜᴛᴇ
 • `/aunmute` — ᴀɴɪᴍᴀᴛᴇᴅ ᴜɴᴍᴜᴛᴇ

@@ -244,7 +244,20 @@ async def reply_filter(client: Client, message: Message):
         if re.search(pattern, message.text, flags=re.IGNORECASE):
             filt = sql.get_filter(chat_id, keyword)
             buttons = sql.get_buttons(chat_id, keyword)
-            keyboard = InlineKeyboardMarkup(build_keyboard(buttons)) if buttons else None
+            
+            # Find the matching note name so btn_next/btn_back know their current page
+            # This ensures page_next:p1 (not page_next: empty) is embedded in the button
+            _page_notename = ""
+            if buttons and any(getattr(b, "url", "") in ("btn_next", "btn_back", "btn_home") for b in buttons):
+                import QueenNoxi.modules.sql.notes_sql as _nsql
+                _all_notes = _nsql.get_all_chat_notes(chat_id)
+                for _n in _all_notes:
+                    if _n.value == filt.reply_text:
+                        _page_notename = _n.name.lower()
+                        break
+            
+            keyboard = InlineKeyboardMarkup(build_keyboard(buttons, notename=_page_notename)) if buttons else None
+
             
             res, flags = await format_message(filt.reply_text, message.from_user, message.chat)
             if not res:

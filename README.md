@@ -1,3 +1,12 @@
+---
+title: Queen Noxibot
+emoji: 👸
+colorFrom: purple
+colorTo: pink
+sdk: docker
+pinned: false
+---
+
 <h1 align="center">
   <b>👸 QueenNoxi 👸</b>
 </h1>

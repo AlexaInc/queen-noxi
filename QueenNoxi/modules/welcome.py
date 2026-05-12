@@ -243,79 +243,80 @@ async def welcome(client: Client, message: Message):
 async def set_welcome_msg(client: Client, message: Message):
     chat = message.chat
     
-    # Super-Note Auto-save in SetWelcome
-    if message.reply_to_message or (message.text and "<" in message.text):
+    # Check if it's a reply and extract media for super-welcome support
+    if message.reply_to_message:
         replied = message.reply_to_message
-        content_text = replied.text or replied.caption if replied else (message.text or message.caption)
-        content_entities = (replied.entities or replied.caption_entities) if replied else (message.entities or message.caption_entities)
+        content_text = replied.text or replied.caption or ""
+        content_entities = replied.entities or replied.caption_entities or []
         
-        # If not a reply, we must offset entities
-        if not replied:
-            args = message.text.split(None, 1)
-            if len(args) >= 2:
-                content_text = args[1]
-                base_offset = message.text.find(content_text)
-                new_ents = []
-                for ent in content_entities:
-                    if ent.offset >= base_offset:
-                        import copy
-                        ne = copy.copy(ent)
-                        ne.offset -= base_offset
-                        new_ents.append(ne)
-                content_entities = new_ents
-
-        from pyrogram.parser.utils import add_surrogates, remove_surrogates
+        # Super-Welcome Parsing
+        from pyrogram.parser.utils import add_surrogates
         surrogated_text = add_surrogates(content_text)
         
-        import re
-        super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
-        matches = list(re.finditer(super_note_pattern, surrogated_text, re.DOTALL))
+        super_filt_pattern = r"<(p[0-9]+|[a-zA-Z0-9_-]{2,})>(.*?)</\1>"
+        matches = list(re.finditer(super_filt_pattern, surrogated_text, re.DOTALL))
         
         if matches:
-            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser, content_to_html
+            from QueenNoxi.modules.helper_funcs.string_handling import content_to_html, button_markdown_parser
             import QueenNoxi.modules.sql.notes_sql as note_sql
-            saved_notes = []
-            main_welcome_text = None
-            main_welcome_buttons = []
             
+            # Extract media info to apply to ALL pages
+            m_sticker = bool(replied.sticker)
+            m_document = bool(replied.document)
+            m_image = bool(replied.photo)
+            m_audio = bool(replied.audio)
+            m_voice = bool(replied.voice)
+            m_video = bool(replied.video)
+            m_gif = bool(replied.animation)
+            
+            _media = (replied.sticker or replied.document or replied.photo or replied.audio or replied.voice or replied.video or replied.animation)
+            m_file = _media.file_id if _media else None
+            
+            replied_type = None
+            if m_sticker: replied_type = Types.STICKER
+            elif m_document: replied_type = Types.DOCUMENT
+            elif m_image: replied_type = Types.PHOTO
+            elif m_audio: replied_type = Types.AUDIO
+            elif m_voice: replied_type = Types.VOICE
+            elif m_video: replied_type = Types.VIDEO
+            elif m_gif: replied_type = Types.ANIMATION
+            
+            saved_notes = []
             for i, match in enumerate(matches):
-                name = match.group(1).lower()
+                keyword = match.group(1).lower()
                 raw_inner = match.group(2)
                 
-                # Correct entity offsets for super-tags
-                inner_text_surrogated = raw_inner.strip()
+                inner_text = raw_inner.strip()
                 lead_strip = len(raw_inner) - len(raw_inner.lstrip())
                 
-                start_idx = match.start(2) + lead_strip
-                end_idx = match.end(2)
+                abs_start = match.start(2) + lead_strip
+                abs_end   = abs_start + len(inner_text)
                 
                 segment_entities = []
                 for ent in content_entities:
-                    if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                    if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
                         import copy
                         new_ent = copy.copy(ent)
-                        new_ent.offset -= start_idx
+                        new_ent.offset -= abs_start
                         segment_entities.append(new_ent)
                 
-                # Convert to HTML
-                html_text = remove_surrogates(content_to_html(inner_text_surrogated, segment_entities))
+                from pyrogram.parser.utils import remove_surrogates
+                html_text = remove_surrogates(content_to_html(inner_text, segment_entities))
                 t, b = button_markdown_parser(html_text, is_html=True)
                 
-                note_sql.add_note_to_db(chat.id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
-                saved_notes.append(name)
-                
+                # Save tags as NOTES
+                current_type = replied_type or (Types.BUTTON_TEXT if b else Types.TEXT)
+                note_sql.add_note_to_db(chat.id, keyword, t, current_type, file=m_file, buttons=b)
+                saved_notes.append(keyword)
+
+                # Set the first tag as the welcome
                 if i == 0:
-                    main_welcome_text = t
-                    main_welcome_buttons = b
+                    sql.set_custom_welcome(chat.id, m_file, t, current_type, b)
             
-            # Set the first tag as welcome
-            sql.set_custom_welcome(chat.id, None, main_welcome_text, Types.BUTTON_TEXT if main_welcome_buttons else Types.TEXT, main_welcome_buttons)
-            await message.reply_text(
-                f"Successfully set your welcome message!\n"
-                f"Detected and saved {len(saved_notes)} pages as notes: {', '.join(saved_notes)}"
-            )
+            await message.reply_text(f"Successfully set your welcome message!\nDetected and saved {len(matches)} tags as notes: {', '.join(saved_notes)}")
             return
-    
+
+    # Non-super handling
     text, data_type, content, buttons = await get_welcome_type(message)
 
     if not data_type:
@@ -348,76 +349,66 @@ async def goodbye(client: Client, message: Message):
 async def set_goodbye_msg(client: Client, message: Message):
     chat = message.chat
     
-    # Non-reply text can contain super-notes too!
-    if message.reply_to_message or (message.text and "<" in message.text):
+    # Check if it's a reply and extract media for super-goodbye support
+    if message.reply_to_message:
         replied = message.reply_to_message
-        content_text = replied.text or replied.caption if replied else (message.text or message.caption)
-        content_entities = (replied.entities or replied.caption_entities) if replied else (message.entities or message.caption_entities)
+        content_text = replied.text or replied.caption or ""
+        content_entities = replied.entities or replied.caption_entities or []
         
-        # If not a reply, we must offset entities
-        if not replied:
-            args = message.text.split(None, 1)
-            if len(args) >= 2:
-                content_text = args[1]
-                base_offset = message.text.find(content_text)
-                new_ents = []
-                for ent in content_entities:
-                    if ent.offset >= base_offset:
-                        import copy
-                        ne = copy.copy(ent)
-                        ne.offset -= base_offset
-                        new_ents.append(ne)
-                content_entities = new_ents
-
-        from pyrogram.parser.utils import add_surrogates, remove_surrogates
+        from pyrogram.parser.utils import add_surrogates
         surrogated_text = add_surrogates(content_text)
         
-        super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
-        matches = list(re.finditer(super_note_pattern, surrogated_text, re.DOTALL))
+        super_filt_pattern = r"<(p[0-9]+|[a-zA-Z0-9_-]{2,})>(.*?)</\1>"
+        matches = list(re.finditer(super_filt_pattern, surrogated_text, re.DOTALL))
         
         if matches:
-            from QueenNoxi.modules.helper_funcs.string_handling import button_markdown_parser, content_to_html
+            from QueenNoxi.modules.helper_funcs.string_handling import content_to_html, button_markdown_parser
             import QueenNoxi.modules.sql.notes_sql as note_sql
-            saved_notes = []
-            main_goodbye_text = None
-            main_goodbye_buttons = []
             
+            # Extract media info
+            _media = (replied.sticker or replied.document or replied.photo or replied.audio or replied.voice or replied.video or replied.animation)
+            m_file = _media.file_id if _media else None
+            
+            replied_type = None
+            if replied.sticker: replied_type = Types.STICKER
+            elif replied.document: replied_type = Types.DOCUMENT
+            elif replied.photo: replied_type = Types.PHOTO
+            elif replied.audio: replied_type = Types.AUDIO
+            elif replied.voice: replied_type = Types.VOICE
+            elif replied.video: replied_type = Types.VIDEO
+            elif replied.animation: replied_type = Types.ANIMATION
+            
+            saved_notes = []
             for i, match in enumerate(matches):
-                name = match.group(1).lower()
+                keyword = match.group(1).lower()
                 raw_inner = match.group(2)
                 
-                # Correct entity offsets for super-tags
-                inner_text_surrogated = raw_inner.strip()
+                inner_text = raw_inner.strip()
                 lead_strip = len(raw_inner) - len(raw_inner.lstrip())
                 
-                start_idx = match.start(2) + lead_strip
-                end_idx = match.end(2)
+                abs_start = match.start(2) + lead_strip
+                abs_end   = abs_start + len(inner_text)
                 
                 segment_entities = []
                 for ent in content_entities:
-                    if ent.offset >= start_idx and (ent.offset + ent.length) <= end_idx:
+                    if ent.offset >= abs_start and (ent.offset + ent.length) <= abs_end:
                         import copy
                         new_ent = copy.copy(ent)
-                        new_ent.offset -= start_idx
+                        new_ent.offset -= abs_start
                         segment_entities.append(new_ent)
                 
-                # Convert to HTML
-                html_text = remove_surrogates(content_to_html(inner_text_surrogated, segment_entities))
+                from pyrogram.parser.utils import remove_surrogates
+                html_text = remove_surrogates(content_to_html(inner_text, segment_entities))
                 t, b = button_markdown_parser(html_text, is_html=True)
                 
-                note_sql.add_note_to_db(chat.id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
-                saved_notes.append(name)
-                
+                current_type = replied_type or (Types.BUTTON_TEXT if b else Types.TEXT)
+                note_sql.add_note_to_db(chat.id, keyword, t, current_type, file=m_file, buttons=b)
+                saved_notes.append(keyword)
+
                 if i == 0:
-                    main_goodbye_text = t
-                    main_goodbye_buttons = b
+                    sql.set_custom_gdbye(chat.id, t, current_type, b, m_file)
             
-            # Set the first tag as goodbye
-            sql.set_custom_gdbye(chat.id, main_goodbye_text, Types.BUTTON_TEXT if main_goodbye_buttons else Types.TEXT, main_goodbye_buttons)
-            await message.reply_text(
-                f"Successfully set your goodbye message!\n"
-                f"Detected and saved {len(saved_notes)} pages as notes: {', '.join(saved_notes)}"
-            )
+            await message.reply_text(f"Successfully set your goodbye message!\nDetected and saved {len(matches)} tags as notes: {', '.join(saved_notes)}")
             return
 
     text, data_type, content, buttons = await get_welcome_type(message)
@@ -426,7 +417,7 @@ async def set_goodbye_msg(client: Client, message: Message):
         await message.reply_text("You didn't specify what to reply with!")
         return
 
-    sql.set_custom_gdbye(chat.id, text, data_type, buttons)
+    sql.set_custom_gdbye(chat.id, text, data_type, buttons, content)
     await message.reply_text("Successfully set custom goodbye message!")
 
 @pbot.on_message(filters.command("resetwelcome") & filters.group)

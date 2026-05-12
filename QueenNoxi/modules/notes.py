@@ -364,16 +364,16 @@ async def list_notes(client: Client, message: Message):
         await message.reply_text("No notes in this chat!")
         return
 
-    msg = "Get note by `#notename` \n\n  *ID*    *Note* \n"
+    msg = "Get note by <code>#notename</code> \n\n  <b>ID</b>    <b>Note</b> \n"
     for i, note in enumerate(note_list, 1):
-        note_name = f"`{i:2}.`  `#{(note.name.lower())}`\n"
+        note_name = f"<code>{i:2}.</code>  <code>#{(note.name.lower())}</code>\n"
         if len(msg) + len(note_name) > 4096:
-            await message.reply_text(msg, parse_mode=enums.ParseMode.MARKDOWN)
+            await message.reply_text(msg, parse_mode=enums.ParseMode.HTML)
             msg = ""
         msg += note_name
 
     if msg:
-        await message.reply_text(msg, parse_mode=enums.ParseMode.MARKDOWN)
+        await message.reply_text(msg, parse_mode=enums.ParseMode.HTML)
 
 
 __mod_name__ = "Notes"

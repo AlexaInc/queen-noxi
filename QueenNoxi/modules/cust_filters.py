@@ -247,6 +247,8 @@ async def reply_filter(client: Client, message: Message):
             keyboard = InlineKeyboardMarkup(build_keyboard(buttons)) if buttons else None
             
             res, flags = await format_message(filt.reply_text, message.from_user, message.chat)
+            if not res:
+                return # Avoid MessageEmpty crash
             parse_mode = enums.ParseMode.HTML
 
             if filt.file_type in (Types.TEXT, Types.BUTTON_TEXT):

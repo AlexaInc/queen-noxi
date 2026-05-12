@@ -75,6 +75,7 @@ def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, is_ht
     from pyrogram.parser.utils import add_surrogates
     surrogated_note = add_surrogates(working_text)
     
+    from pyrogram.parser.utils import remove_surrogates
     for match in BTN_URL_REGEX.finditer(surrogated_note):
         n_escapes = 0
         to_check = match.start(1) - 1
@@ -83,9 +84,12 @@ def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, is_ht
             to_check -= 1
 
         if n_escapes % 2 == 0:
+            # IMPORTANT: Remove surrogates from button name and URL before storing
+            name = remove_surrogates(match.group(2))
+            url = remove_surrogates(match.group(5))
             buttons.append(Button(
-                match.group(2),
-                match.group(5),
+                name,
+                url,
                 bool(match.group(6)),
                 match.group(3)
             ))

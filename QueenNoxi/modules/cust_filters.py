@@ -68,7 +68,8 @@ async def add_filter(client: Client, message: Message):
                         new_ent.offset -= abs_start
                         segment_entities.append(new_ent)
                 
-                html_text = content_to_html(inner_text, segment_entities)
+                from pyrogram.parser.utils import remove_surrogates
+                html_text = remove_surrogates(content_to_html(inner_text, segment_entities))
                 t, b = button_markdown_parser(html_text, is_html=True)
                 
                 # Save tags as NOTES
@@ -145,7 +146,8 @@ async def add_filter(client: Client, message: Message):
                         segment_entities.append(new_ent)
                 
                 # Convert this specific segment to HTML
-                html_text = content_to_html(inner_text, segment_entities)
+                from pyrogram.parser.utils import remove_surrogates
+                html_text = remove_surrogates(content_to_html(inner_text, segment_entities))
                 t, b = button_markdown_parser(html_text, is_html=True)
                 
                 # Save tags as NOTES

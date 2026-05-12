@@ -134,6 +134,7 @@ async def new_member(client: Client, message: Message):
                     res,
                     reply_markup=keyboard,
                     reply_to_message_id=message.id if not sql.clean_service(chat.id) else None,
+                    parse_mode=enums.ParseMode.HTML,
                     **text_flags
                 )
             else:
@@ -150,6 +151,7 @@ async def new_member(client: Client, message: Message):
                     cust_content,
                     caption=res,
                     reply_markup=keyboard,
+                    parse_mode=enums.ParseMode.HTML,
                     **media_flags
                 )
 
@@ -195,6 +197,7 @@ async def left_member(client: Client, message: Message):
             await message.reply_text(
                 res,
                 reply_markup=keyboard,
+                parse_mode=enums.ParseMode.HTML,
                 **text_flags
             )
         else:
@@ -215,10 +218,11 @@ async def left_member(client: Client, message: Message):
                     content,
                     caption=res,
                     reply_markup=keyboard,
+                    parse_mode=enums.ParseMode.HTML,
                     **media_flags
                 )
             else:
-                await message.reply_text(res, reply_markup=keyboard, **flags)
+                await message.reply_text(res, reply_markup=keyboard, parse_mode=enums.ParseMode.HTML, **flags)
 
 @pbot.on_message(filters.command("welcome") & filters.group)
 @user_admin

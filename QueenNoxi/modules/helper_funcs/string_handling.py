@@ -16,12 +16,12 @@ MATCH_MD = re.compile(
 
 LINK_REGEX = re.compile(r"(?<!\\)\[.+?\]\((.*?)\)")
 # Support both Markdown style [X](buttonurl://Y) and HTML style <a href="buttonurl://Y">X</a>
-# The HTML name group (11) now uses a non-greedy match with a lookahead for </a> to allow nested HTML tags like <b> inside button names.
 BTN_URL_REGEX = re.compile(
     r"(\[([^\[]+?)\]\(buttonurl(?:#([^:]+))?://(/{0,2})(.+?)(:same)?\))|"
-    r'(<a href="buttonurl(?:#([^:"]+))?://(/{0,2})(.+?)(:same)?">(.*?)(?=</a>)</a>)'
+    r'(<a href="buttonurl(?:#([^:"]+))?://(/{0,2})(.+?)(:same)?">([^<]+?)</a>)'
 )
 
+from pyrogram.parser.markdown import Markdown
 
 def _selective_escape(to_parse: str) -> str:
     offset = 0
@@ -37,10 +37,7 @@ from pyrogram.parser.html import HTML
 from pyrogram.parser import utils as parser_utils
 import html
 
-def content_to_html(txt: str, entities: List[MessageEntity] = None, is_already_html: bool = False) -> str:
-    if is_already_html:
-        return str(txt)
-        
+def content_to_html(txt: str, entities: List[MessageEntity] = None) -> str:
     if not entities:
         return html.escape(str(txt))
     
@@ -66,8 +63,8 @@ class Button:
         self.same_line = same_line
         self.color = color
 
-def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, is_already_html: bool = False) -> Tuple[str, List[Button]]:
-    full_content = content_to_html(txt, entities, is_already_html=is_already_html)
+def button_markdown_parser(txt: str, entities: List[MessageEntity] = None, offset: int = 0) -> Tuple[str, List[Button]]:
+    full_content = content_to_html(txt, entities)
     prev = 0
     note_data = ""
     buttons = []

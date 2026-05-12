@@ -154,8 +154,8 @@ async def save(client: Client, message: Message):
         note_name = args[0].lower() if args else None
         
         # Check for tags in replied message
-        # Use a negative lookahead to avoid collisions with standard HTML/Telegram tags
-        super_note_pattern = r"<(?!b\b|i\b|u\b|s\b|a\b|code\b|pre\b|tg-spoiler\b|tg-emoji\b|blockquote\b|strong\b|em\b)([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        # Note name comes from the command args
+        super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
         
         # Convert the ENTIRE replied message to markdown first
         from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
@@ -170,7 +170,7 @@ async def save(client: Client, message: Message):
                 inner_markdown = match.group(2).strip()
                 
                 # Parse buttons from the already-markdownified inner text
-                t, b = button_markdown_parser(inner_markdown, is_already_html=True)
+                t, b = button_markdown_parser(inner_markdown)
                 
                 sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
                 saved.append(name)
@@ -210,8 +210,8 @@ async def save(client: Client, message: Message):
         await message.reply_text(f"Yas! Added note `{note_name}` from reply.")
         return
 
-    # Defensive pattern to ignore standard HTML tags
-    super_note_pattern = r"<(?!b\b|i\b|u\b|s\b|a\b|code\b|pre\b|tg-spoiler\b|tg-emoji\b|blockquote\b|strong\b|em\b)([a-zA-Z0-9_-]+)>(.*?)</\1>"
+    # Non-reply case (legacy support for /save name content)
+    super_note_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
     
     first_space = raw_text.find(" ")
     if first_space == -1:
@@ -231,7 +231,7 @@ async def save(client: Client, message: Message):
             name = match.group(1).lower()
             inner_markdown = match.group(2).strip()
             
-            t, b = button_markdown_parser(inner_markdown, is_already_html=True)
+            t, b = button_markdown_parser(inner_markdown)
             
             sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
             saved.append(name)

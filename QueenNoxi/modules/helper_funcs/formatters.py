@@ -22,27 +22,14 @@ async def format_message(text: str, user: User, chat: Chat) -> Tuple[str, Dict]:
     id = user.id
     chatname = html.escape(chat.title if chat and chat.type != enums.ChatType.PRIVATE else user.first_name)
     
-    rules_link = f"t.me/{BOT_USERNAME}?start={chat.id}" if chat and chat.type != enums.ChatType.PRIVATE else f"t.me/{BOT_USERNAME}"
-    rules = f"[Rules]({rules_link})"
+    rules_link = f"https://t.me/{BOT_USERNAME}?start={chat.id}" if chat and chat.type != enums.ChatType.PRIVATE else f"https://t.me/{BOT_USERNAME}"
+    rules = f'<a href="{rules_link}">Rules</a>'
 
     VALID_PLACEHOLDERS = [
-        "first", "last", "fullname", "username", "mention", "id", "chatname", "rules",
-        "nonotif", "protect", "preview"
+        "first", "last", "fullname", "username", "mention", "id", "chatname", "rules"
     ]
     
     text = escape_invalid_curly_brackets(text, VALID_PLACEHOLDERS)
-
-    # Handle flags embedded in text
-    if "{nonotif}" in text:
-        text = text.replace("{nonotif}", "")
-        flags["disable_notification"] = True
-    if "{protect}" in text:
-        text = text.replace("{protect}", "")
-        flags["protect_content"] = True
-    if "{preview}" in text:
-        text = text.replace("{preview}", "")
-        # For Pyrogram 2.x, we usually use link_preview_options
-        flags["link_preview_options"] = enums.LinkPreviewOptions(is_disabled=True)
 
     try:
         text = text.format(
@@ -53,10 +40,7 @@ async def format_message(text: str, user: User, chat: Chat) -> Tuple[str, Dict]:
             mention=mention,
             id=id,
             chatname=chatname,
-            rules=rules,
-            nonotif="", # Placeholder removed but keep for safety
-            protect="",
-            preview=""
+            rules=rules
         )
     except Exception as e:
         import logging

@@ -39,8 +39,8 @@ async def add_filter(client: Client, message: Message):
         args = message.command[1:]
         trigger = args[0].lower() if args else None
         
-        # Super-Filter Parsing with defensive HTML-tag lookahead
-        super_filt_pattern = r"<(?!b\b|i\b|u\b|s\b|a\b|code\b|pre\b|tg-spoiler\b|tg-emoji\b|blockquote\b|strong\b|em\b)([a-zA-Z0-9_-]+)>(.*?)</\1>"
+        # Super-Filter Parsing
+        super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
         
         from QueenNoxi.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
         full_markdown = markdown_parser(content_text, content_entities)
@@ -54,7 +54,7 @@ async def add_filter(client: Client, message: Message):
                 keyword = match.group(1).lower()
                 inner_markdown = match.group(2).strip()
                 
-                t, b = button_markdown_parser(inner_markdown, is_already_html=True)
+                t, b = button_markdown_parser(inner_markdown)
                 
                 # Save tags as NOTES
                 note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
@@ -96,8 +96,8 @@ async def add_filter(client: Client, message: Message):
         await message.reply_text(f"Yas! Added filter `{trigger}` from reply.")
         return
 
-    # Super-Filter Parsing with defensive HTML-tag lookahead
-    super_filt_pattern = r"<(?!b\b|i\b|u\b|s\b|a\b|code\b|pre\b|tg-spoiler\b|tg-emoji\b|blockquote\b|strong\b|em\b)([a-zA-Z0-9_-]+)>(.*?)</\1>"
+    # Non-reply case
+    super_filt_pattern = r"<([a-zA-Z0-9_-]+)>(.*?)</\1>"
     
     first_space = raw_text.find(" ")
     if first_space != -1:
@@ -112,7 +112,7 @@ async def add_filter(client: Client, message: Message):
                 keyword = match.group(1).lower()
                 inner_markdown = match.group(2).strip()
                 
-                t, b = button_markdown_parser(inner_markdown, is_already_html=True)
+                t, b = button_markdown_parser(inner_markdown)
                 
                 # Save tags as NOTES
                 note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)

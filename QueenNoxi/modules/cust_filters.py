@@ -54,7 +54,7 @@ async def add_filter(client: Client, message: Message):
                 keyword = match.group(1).lower()
                 inner_markdown = match.group(2).strip()
                 
-                t, b = button_markdown_parser(inner_markdown)
+                t, b = button_markdown_parser(inner_markdown, is_already_html=True)
                 
                 # Save tags as NOTES
                 note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
@@ -112,7 +112,7 @@ async def add_filter(client: Client, message: Message):
                 keyword = match.group(1).lower()
                 inner_markdown = match.group(2).strip()
                 
-                t, b = button_markdown_parser(inner_markdown)
+                t, b = button_markdown_parser(inner_markdown, is_already_html=True)
                 
                 # Save tags as NOTES
                 note_sql.add_note_to_db(chat_id, keyword, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)

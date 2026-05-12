@@ -231,7 +231,7 @@ async def save(client: Client, message: Message):
             name = match.group(1).lower()
             inner_markdown = match.group(2).strip()
             
-            t, b = button_markdown_parser(inner_markdown)
+            t, b = button_markdown_parser(inner_markdown, is_already_html=True)
             
             sql.add_note_to_db(chat_id, name, t, Types.BUTTON_TEXT if b else Types.TEXT, buttons=b)
             saved.append(name)

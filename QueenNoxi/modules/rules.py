@@ -59,7 +59,7 @@ async def set_rules(client: Client, message: Message):
     if txt:
         # Offset calculation for markdown parser
         offset = len(raw_text) - len(txt)
-        markdown_rules = await markdown_parser(txt, message.entities, offset)
+        markdown_rules = markdown_parser(txt, message.entities, offset)
         sql.set_rules(chat_id, markdown_rules)
         await message.reply_text("Successfully set rules for this group.")
     else:

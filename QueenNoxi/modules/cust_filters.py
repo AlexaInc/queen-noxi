@@ -290,22 +290,24 @@ async def reply_filter(client: Client, message: Message):
                         _page_notename = _n.name.lower()
                         break
             
-            keyboard = InlineKeyboardMarkup(build_keyboard(buttons, notename=_page_notename)) if buttons else None
+            keyb = build_keyboard(buttons, notename=_page_notename)
+            keyboard = InlineKeyboardMarkup(keyb) if keyb else None
 
             
             res, flags = await format_message(filt.reply_text, message.from_user, message.chat)
-            if not res:
-                return # Avoid MessageEmpty crash
+            if not res and filt.file_type in (Types.TEXT, Types.BUTTON_TEXT):
+                return # Avoid MessageEmpty crash for text-only filters
             parse_mode = enums.ParseMode.HTML
 
             if filt.file_type in (Types.TEXT, Types.BUTTON_TEXT):
-                # Text supports all formatting flags
+                # Text replies don't support has_spoiler
+                text_flags = {k: v for k, v in flags.items() if k != "has_spoiler"}
                 await message.reply_text(
                     res,
                     reply_markup=keyboard,
                     reply_to_message_id=message.id,
                     parse_mode=parse_mode,
-                    **flags
+                    **text_flags
                 )
             else:
                 # Media DOES NOT support disable_web_page_preview

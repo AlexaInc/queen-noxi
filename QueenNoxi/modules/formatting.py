@@ -4,34 +4,33 @@ from QueenNoxi import pbot
 __mod_name__ = "Formatting"
 
 __help__ = """
-You can use the following placeholders to personalize your welcome, filters, or notes:
+Personalize your welcome, filters, or notes with these placeholders:
 
 **User Info:**
-• `{first}`: The user's first name.
-• `{last}`: The user's last name (or first name if empty).
-• `{fullname}`: The user's full name.
-• `{username}`: The user's @username (or mention if empty).
-• `{id}`: The user's ID.
-• `{mention}`: A clickable mention of the user.
+• `{first}`: First name.
+• `{last}`: Last name.
+• `{fullname}`: Full name.
+• `{username}`: @username.
+• `{id}`: User ID.
+• `{mention}`: Mention user.
 
 **Chat Info:**
-• `{chatname}`: The name of the current group.
-• `{rules}`: A clickable link to the group rules.
+• `{chatname}`: Group name.
+• `{rules}`: Link to rules.
 
-**Advanced Control Tags:**
-• `{preview}`: Enables link previews (enabled by default unless this is absent).
-• `{nonotif}`: Sends the message without a notification sound.
-• `{protect}`: Prevents the message from being forwarded or screenshotted.
-• `{mediaspoiler}`: Hides the photo/video behind a spoiler blur (if applicable).
+**Control Tags:**
+• `{preview}`: Enable link previews.
+• `{nonotif}`: Muted message.
+• `{protect}`: Prevent forward/screenshot.
+• `{mediaspoiler}`: Blur media.
 
 **Buttons:**
-• `[Button Text](buttonurl://link)`: Creates a URL button.
-• `[Button Text](buttonurl#danger://link)`: Creates a Red (danger) button.
-• `[Button Text](buttonurl#success://link)`: Creates a Green (success) button.
-• `[Button Text](buttonurl#primary://link)`: Creates a Blue (primary) button.
-• `[Button Text](buttonurl://btn_next)`: Creates a "Next" navigation button.
-• `[Button Text](buttonurl://btn_back)`: Creates a "Back" navigation button.
+• `[Text](buttonurl://link)`: URL button.
+• `[Text](buttonurl#danger://link)`: Red button.
+• `[Text](buttonurl#success://link)`: Green button.
+• `[Text](buttonurl#primary://link)`: Blue button.
+• `[Text](buttonurl://btn_next)`: Next page.
+• `[Text](buttonurl://btn_back)`: Previous page.
 
-**Note on Previews:**
-Link previews are **DISABLED** by default. To enable them, include `{preview}` anywhere in your message.
+**Note:** Previews are **DISABLED** by default. Use `{preview}` to enable.
 """

@@ -7,7 +7,7 @@ from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
 
 from QueenNoxi import telethn as client
 
-spam_chats = []
+spam_chats = set()
 
 @client.on(events.NewMessage(pattern="^@tagall ?(.*)"))
 @client.on(events.NewMessage(pattern="^@all ?(.*)"))
@@ -50,15 +50,17 @@ async def mentionall(event):
             "__Reply to a message or give me some text to mention others!__"
         )
 
-    spam_chats.append(chat_id)
+    spam_chats.add(chat_id)
     usrnum = 0
     usrtxt = ""
     async for usr in client.iter_participants(chat_id):
-        if not chat_id in spam_chats:
+        if chat_id not in spam_chats:
             break
         usrnum += 1
         usrtxt += f"[{usr.first_name}](tg://user?id={usr.id}), "
         if usrnum == 15:
+            if chat_id not in spam_chats:
+                break
             if mode == "text_on_cmd":
                 txt = f"{msg}\n{usrtxt}"
                 await client.send_message(chat_id, txt)
@@ -68,14 +70,14 @@ async def mentionall(event):
             usrnum = 0
             usrtxt = ""
     try:
-        spam_chats.remove(chat_id)
+        spam_chats.discard(chat_id)
     except:
         pass
 
 
 @client.on(events.NewMessage(pattern="^/cancel$"))
 async def cancel_spam(event):
-    if not event.chat_id in spam_chats:
+    if event.chat_id not in spam_chats:
         return await event.respond("ᴛʜᴇʀᴇ ɪs ɴᴏ ᴘʀᴏᴄᴄᴇss ᴏɴ ɢᴏɪɴɢ..")
     is_admin = False
     try:
@@ -91,10 +93,7 @@ async def cancel_spam(event):
         return await event.respond("__ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴇxᴇᴄᴜᴛᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ!__")
 
     else:
-        try:
-            spam_chats.remove(event.chat_id)
-        except:
-            pass
+        spam_chats.discard(event.chat_id)
         return await event.respond("sᴛᴏᴘᴘᴇᴅ ᴍᴇɴᴛɪᴏɴ.__")
 
 

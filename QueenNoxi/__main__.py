@@ -189,12 +189,22 @@ async def help_button(client, query: CallbackQuery):
                 )
                 + HELPABLE[module].__help__
             )
-            await query.message.edit_caption(text,
-                reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton(text="ʙᴀᴄᴋ", callback_data="help_back"),
-                      InlineKeyboardButton(text="sᴜᴘᴘᴏʀᴛ", callback_data="queennoxi_support")]]
-                ),
-            )
+            try:
+                await query.message.edit_caption(text,
+                    reply_markup=InlineKeyboardMarkup(
+                        [[InlineKeyboardButton(text="ʙᴀᴄᴋ", callback_data="help_back"),
+                          InlineKeyboardButton(text="sᴜᴘᴘᴏʀᴛ", callback_data="queennoxi_support")]]
+                    ),
+                )
+            except RPCError as e:
+                # Fallback if caption is still too long or other RPC error
+                LOGGER.error(f"Error editing help caption: {e}")
+                await query.message.reply_text(text,
+                    reply_markup=InlineKeyboardMarkup(
+                        [[InlineKeyboardButton(text="ʙᴀᴄᴋ", callback_data="help_back"),
+                          InlineKeyboardButton(text="sᴜᴘᴘᴏʀᴛ", callback_data="queennoxi_support")]]
+                    ),
+                )
         elif prev_match:
             curr_page = int(prev_match.group(1))
             await query.message.edit_caption(HELP_STRINGS,
@@ -216,8 +226,9 @@ async def help_button(client, query: CallbackQuery):
                 ),
             )
         await query.answer()
-    except Exception:
-        pass
+    except Exception as e:
+        LOGGER.error(f"Error in help_button: {e}")
+        await query.answer("An error occurred while opening help.", show_alert=True)
 
 @pbot.on_callback_query(filters.regex(r"^queennoxi_"))
 async def QueenNoxi_about_callback(client, query: CallbackQuery):

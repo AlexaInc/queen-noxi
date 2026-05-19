@@ -24,7 +24,7 @@ hachoir==3.3.0
 heroku3
 html2text==2024.2.26
 jikanpy==4.3.2
-lxml==4.9.4
+lxml==6.1.1
 markdown2==2.5.0
 MukeshAPI
 motor==3.6.0

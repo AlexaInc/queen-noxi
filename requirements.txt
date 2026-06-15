@@ -36,7 +36,7 @@ pyfiglet
 # pykeyboard removed due to pyrogram version conflict
 pymongo==4.9.2
 pynewtonmath==1.0.1
-pyrate-limiter==2.10.0
+pyrate-limiter==4.4.0
 pyshorteners
 kurigram>=2.2.22
 regex==2024.5.15

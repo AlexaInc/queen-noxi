@@ -39,7 +39,7 @@ pynewtonmath==1.0.1
 pyrate-limiter==2.10.0
 pyshorteners
 kurigram>=2.2.22
-regex==2024.5.15
+regex==2026.7.19
 requests==2.32.3
 search_engine_parser==0.6.8
 secureme==0.0.4
